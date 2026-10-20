@@ -297,9 +297,28 @@ export default function createDragDropTouch(initialConfig) {
   }
 
   function shouldHandle(e) {
-    if (!e || e.defaultPrevented) return false;
+    if (!e) return false;
 
-    /* Only single touch events should be handled */
+    // A second finger cancels the session, even if another listener has
+    // prevented this event. Leave the browser free to handle multitouch.
+    if (e.touches?.length > 1) {
+      if (state.dragSource) {
+        try {
+          if (state.dragging) {
+            dispatchSyntheticEvent(
+              state.lastTouchEvent,
+              "dragend",
+              state.dragSource,
+            );
+          }
+        } finally {
+          reset("multitouch");
+        }
+      }
+      return false;
+    }
+
+    if (e.defaultPrevented) return false;
     return e.touches && e.touches.length < 2;
   }
 
