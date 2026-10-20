@@ -62,10 +62,11 @@ export default function draggable(options = {}) {
     type, // Drag type that drop tragets will listen to
     */
   };
-  let dragEndCleanup = undefined, // Cleanup function to execute when drag ends
-    handlersSet = false, // Are handlers set on the element?
-    lastPointerType = undefined, // Keep track of last pointer type on pointerdown
-    lastPointerDownTarget = undefined; // Store the original pointerdown target
+  let dragEndCleanup = undefined; // Cleanup function to execute when drag ends
+  let handlersSet = false; // Are handlers set on the element?
+  let lastPointerType = undefined; // Keep track of last pointer type on pointerdown
+  let lastPointerDownTarget = undefined; // Store the original pointerdown target
+  let pendingDragFrame = undefined; // Animation frame reference
 
   let state = {
     dragging: false, // Is the element currently being dragged?
@@ -191,7 +192,8 @@ export default function draggable(options = {}) {
 
     if (!state.dragging) {
       /* Await Svelte reactive updates first to allow repainting before declaring dragged data */
-      requestAnimationFrame(() => {
+      pendingDragFrame = requestAnimationFrame(() => {
+        pendingDragFrame = undefined;
         dragEndCleanup = publishDrag({ type, data, onDrop });
       });
 
@@ -205,6 +207,9 @@ export default function draggable(options = {}) {
   }
 
   function dragend() {
+    cancelAnimationFrame(pendingDragFrame);
+    pendingDragFrame = undefined;
+
     const { data, type, onDragEnd } = _options;
 
     if (state.dragging) {
@@ -217,6 +222,7 @@ export default function draggable(options = {}) {
     }
 
     dragEndCleanup?.();
+    dragEndCleanup = undefined;
   }
 
   function getHandle() {
