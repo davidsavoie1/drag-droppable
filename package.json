@@ -1,0 +1,28 @@
+{
+  "name": "drag-droppable",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lightweight, data-driven, framework-independent drag-and-drop system with touch support and reactive stores.",
+  "files": [
+    "src"
+  ],
+  "repository": "github:davidsavoie1/drag-droppable",
+  "main": "./src/index.js",
+  "exports": "./src/index.js",
+  "keywords": [
+    "dnd",
+    "drag-and-drop",
+    "drag",
+    "drop",
+    "svelte"
+  ],
+  "author": "David Savoie",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10"
+  }
+}
