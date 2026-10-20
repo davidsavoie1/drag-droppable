@@ -1,3 +1,4 @@
+import { getConfig } from "./configure.js";
 import { DND_STORE, DROPPABLE } from "./constants.js";
 import { registerDragListeners, unregisterDragListeners } from "./dndSubs.js";
 import { getClientRect, isElement, isFunc } from "./functions.js";
@@ -126,7 +127,35 @@ export default function droppable(options) {
 
   function publish(newState = state) {
     state = newState;
+    toggleAttributes();
     subscribers.forEach((sub) => sub(state));
+  }
+
+  function toggleAttributes({ forceRemove = false } = {}) {
+    if (!el) return;
+
+    const {
+      attributesPrefix = getConfig().attributesPrefix,
+      concerned,
+      canDrop,
+      dragging,
+      type,
+      unconcerned,
+    } = state;
+
+    if (!attributesPrefix) return;
+
+    const shouldSet = !forceRemove && !!dragging;
+
+    Object.entries({ can: canDrop, concerned, unconcerned }).forEach(
+      ([k, v]) => {
+        el.toggleAttribute(`data-${attributesPrefix}-${k}`, !!(shouldSet && v));
+      },
+    );
+
+    shouldSet
+      ? el.setAttribute(`data-${attributesPrefix}-type`, type)
+      : el.removeAttribute(`data-${attributesPrefix}-type`);
   }
 
   function unsubscribeAll() {
@@ -134,7 +163,14 @@ export default function droppable(options) {
   }
 
   function createHandler(type) {
-    const { data: dropData, disabled, unless, when, onDrop } = _options;
+    const {
+      attributesPrefix = getConfig().attributesPrefix,
+      data: dropData,
+      disabled,
+      unless,
+      when,
+      onDrop,
+    } = _options;
 
     if (disabled) return;
 
@@ -155,6 +191,7 @@ export default function droppable(options) {
       let lastPositionning = {}; // Last positionning of dragged element over drop
 
       publish({
+        attributesPrefix,
         canDrop: false,
         concerned,
         data: dropData,
@@ -196,6 +233,7 @@ export default function droppable(options) {
       }
 
       function resetState() {
+        toggleAttributes({ forceRemove: true });
         publish({});
       }
 
@@ -321,6 +359,7 @@ export default function droppable(options) {
     /* Fully tear down the controller. This is terminal for the current
      * store instance. */
     destroy() {
+      toggleAttributes({ forceRemove: true });
       unregister();
       unsubscribeAll();
       publish({});
@@ -345,6 +384,7 @@ export default function droppable(options) {
     /* Detach from the currently bound element without destroying the store.
      * The same store may then be rebound later. */
     unbind() {
+      toggleAttributes({ forceRemove: true });
       el = undefined;
       updateRegistration();
       publish({});

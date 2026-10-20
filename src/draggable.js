@@ -1,3 +1,4 @@
+import { getConfig } from "./configure.js";
 import { DND_STORE, DRAGGABLE } from "./constants.js";
 import { publishDrag } from "./dndSubs.js";
 import {
@@ -47,16 +48,19 @@ export default function draggable(options = {}) {
 
   /* Internal options. Can be set externally by store method. */
   let _options = {
-    // data, // Drag data
-    // except, // What to ignore when initiating a drag. Element, CSS selector or function.
-    // disabled, // Is drag disabled entirely?
-    // dragEl, // Element used as drag image. Can be different than `el`, but default to it.
-    // effectAllowed, // Which drag-and-drop operations are permitted (copy, move, link, copyMove, all, etc.)
-    // handle, // Element used to initiate drag on which handlers are declared. Can be different than `el`, but default to it.
-    // onDrag, // (data, type) Callback for when drag starts
-    // onDrop, // Same as droppable `onDrop`, but declared on the drag element
-    // touch, // Are touch initiated drags allowed? Includes "touch" and "pen" pointers.
-    // type, // Drag type that drop tragets will listen to
+    /*
+    attributesPrefix, // Prefix used with data-[prefix]-* attributes
+    data, // Drag data
+    except, // What to ignore when initiating a drag. Element, CSS selector or function.
+    disabled, // Is drag disabled entirely?
+    dragEl, // Element used as drag image. Can be different than `el`, but default to it.
+    effectAllowed, // Which drag-and-drop operations are permitted (copy, move, link, copyMove, all, etc.)
+    handle, // Element used to initiate drag on which handlers are declared. Can be different than `el`, but default to it.
+    onDrag, // (data, type) Callback for when drag starts
+    onDrop, // Same as droppable `onDrop`, but declared on the drag element
+    touch, // Are touch initiated drags allowed? Includes "touch" and "pen" pointers.
+    type, // Drag type that drop tragets will listen to
+    */
   };
   let dragEndCleanup = undefined, // Cleanup function to execute when drag ends
     handlersSet = false, // Are handlers set on the element?
@@ -117,7 +121,18 @@ export default function draggable(options = {}) {
         ? fnOrPartial(state)
         : { ...state, ...fnOrPartial };
 
+    toggleAttributes();
     publish(state);
+  }
+
+  function toggleAttributes() {
+    if (!el) return;
+
+    const { attributesPrefix = getConfig().attributesPrefix, dragging } = state;
+
+    if (!attributesPrefix) return;
+
+    el.toggleAttribute(`data-${attributesPrefix}-dragging`, !!dragging);
   }
 
   function updateRegistration() {
@@ -137,6 +152,7 @@ export default function draggable(options = {}) {
 
   function dragstart(e) {
     const {
+      attributesPrefix = getConfig().attributesPrefix,
       data,
       disabled,
       dragEl = el,
@@ -181,6 +197,7 @@ export default function draggable(options = {}) {
 
       onDrag?.(data, type);
       setState({
+        attributesPrefix,
         dragging: true,
         pointerType: lastPointerType,
       });

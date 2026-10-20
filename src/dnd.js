@@ -12,7 +12,7 @@ import { isDnDStore } from "./functions.js";
  * When plain options are passed, the action creates and owns the underlying
  * store. When an existing store is passed, the action only binds/unbinds it.
  */
-export default function dnd(el, args) {
+export function dnd(el, args) {
   if (isDnDStore(args)) {
     const { bind, unbind } = args;
     bind(el);
@@ -53,4 +53,12 @@ export default function dnd(el, args) {
     destroy,
     update: set,
   };
+}
+
+export function dndDrag(el, args) {
+  return dnd(el, isDnDStore(args) ? args : { ...args, draggable: true });
+}
+
+export function dndDrop(el, args) {
+  return dnd(el, isDnDStore(args) ? args : { ...args, droppable: true });
 }
