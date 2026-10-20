@@ -47,6 +47,7 @@ export default function droppable(options) {
   };
 
   let dragListeners = {}; // Subscriptions to drag event by type
+  let activeDragCleanup; // Cleanup shared with the source for the current session
 
   function setElement(element) {
     if (isElement(el) && el !== element) {
@@ -111,6 +112,7 @@ export default function droppable(options) {
   function unregister() {
     unregisterDragListeners(dragListeners);
     dragListeners = {};
+    activeDragCleanup?.();
   }
 
   function subscribe(callback) {
@@ -190,6 +192,28 @@ export default function droppable(options) {
       let dragoverEl = undefined; // Element being dragged over
       let lastPositionning = {}; // Last positionning of dragged element over drop
 
+      let cleaned = false;
+      let cleanupHandlers;
+
+      function cleanup() {
+        if (cleaned) return;
+        cleaned = true;
+        if (activeDragCleanup === cleanup) activeDragCleanup = undefined;
+        cleanupHandlers();
+        resetState();
+      }
+
+      // Install and retain cleanup before notifying subscribers: a subscriber
+      // may immediately disable or detach this target.
+      activeDragCleanup?.();
+      activeDragCleanup = cleanup;
+      if (concerned) {
+        setHandlers();
+        cleanupHandlers = unsetHandlers;
+      } else {
+        cleanupHandlers = handleUnconcerned();
+      }
+
       publish({
         attributesPrefix,
         canDrop: false,
@@ -202,11 +226,7 @@ export default function droppable(options) {
         unconcerned: concerned === false,
       });
 
-      /* If not concerned by current data (yet type is the same),
-       * publish state, but do not set drop handlers on element.
-       * Instead, set dummy handlers that will prevent events from bubbling.
-       * Otherwise, underlying elements might get triggered. */
-      if (!concerned) return handleUnconcerned();
+      return cleanup;
 
       function handleUnconcerned() {
         const prevCursor = target?.style?.cursor || "";
@@ -228,7 +248,6 @@ export default function droppable(options) {
             target.removeEventListener(eventType, blockEvent),
           );
           target.style.cursor = prevCursor;
-          resetState();
         };
       }
 
@@ -322,9 +341,6 @@ export default function droppable(options) {
         handlersSet = true;
       }
 
-      /* EXECUTION */
-      setHandlers();
-
       /* CLEANUP */
       function unsetHandlers() {
         if (!handlersSet) return;
@@ -333,14 +349,10 @@ export default function droppable(options) {
         target.removeEventListener("dragover", dragover);
         target.removeEventListener("dragleave", dragleave);
         target.removeEventListener("drop", drop);
-        setDragoverEl(null);
+        dragoverEl = undefined;
         handlersSet = false;
       }
 
-      return () => {
-        resetState();
-        unsetHandlers();
-      };
     };
   }
 
@@ -385,8 +397,8 @@ export default function droppable(options) {
      * The same store may then be rebound later. */
     unbind() {
       toggleAttributes({ forceRemove: true });
+      unregister();
       el = undefined;
-      updateRegistration();
       publish({});
     },
 
