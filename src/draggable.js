@@ -197,12 +197,22 @@ export default function draggable(options = {}) {
         dragEndCleanup = publishDrag({ type, data, onDrop });
       });
 
-      onDrag?.(data, type);
       setState({
         attributesPrefix,
         dragging: true,
         pointerType: lastPointerType,
       });
+
+      // A subscriber may synchronously disable or detach this source.
+      if (!state.dragging) {
+        preventDefault(e);
+        return;
+      }
+
+      onDrag?.(data, type);
+
+      // onDrag may cancel too. Cancel the DOM drag as well as the controller.
+      if (!state.dragging) preventDefault(e);
     }
   }
 

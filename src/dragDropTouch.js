@@ -145,6 +145,12 @@ export default function createDragDropTouch(initialConfig) {
   function deleteElementConfig(el) {
     if (!el) return;
     configByElement.delete(el);
+
+    // The draggable controller has already ended its drag and removed its
+    // handlers. Cancel the touch engine too, without emitting another dragend.
+    if (state.dragSource === el) {
+      reset("source unregistered");
+    }
   }
 
   /* Start a potential touch drag session.
@@ -211,9 +217,13 @@ export default function createDragDropTouch(initialConfig) {
   function startDrag(e) {
     if (!state.isDragEnabled) return;
     state.lastTouchEvent = e;
-    const { dragSource } = state;
+    const session = state;
+    const { dragSource } = session;
 
     const dragstartEvent = dispatchSyntheticEvent(e, "dragstart", dragSource);
+    // onDrag or a store subscriber may unregister the source synchronously.
+    // reset() replaces state; do not resume a session that was cancelled.
+    if (state !== session) return;
     if (dragstartEvent.defaultPrevented) {
       reset("dragstart prevented");
       return;
