@@ -31,6 +31,7 @@ const EVENT_TYPES_TO_BLOCK = ["dragenter", "dragleave", "dragover", "drop"];
  */
 export default function droppable(options) {
   let el;
+  let destroyed = false;
   let subscribers = new Set();
   let state = {};
 
@@ -49,7 +50,12 @@ export default function droppable(options) {
   let dragListeners = {}; // Subscriptions to drag event by type
   let activeDragCleanup; // Cleanup shared with the source for the current session
 
+  function assertNotDestroyed() {
+    if (destroyed) throw new Error("Cannot reuse a destroyed droppable controller.");
+  }
+
   function setElement(element) {
+    assertNotDestroyed();
     if (isElement(el) && el !== element) {
       throw new Error("Cannot bind more than once to an element.");
     }
@@ -58,6 +64,7 @@ export default function droppable(options) {
   }
 
   function setOptions(newOptions) {
+    assertNotDestroyed();
     if (!newOptions) {
       _options = { disabled: true };
     } else {
@@ -121,6 +128,7 @@ export default function droppable(options) {
     }
 
     callback(state);
+    if (destroyed) return () => {};
     subscribers.add(callback);
 
     /* Unsubscribe */
@@ -371,9 +379,12 @@ export default function droppable(options) {
     /* Fully tear down the controller. This is terminal for the current
      * store instance. */
     destroy() {
+      if (destroyed) return;
+      destroyed = true;
       toggleAttributes({ forceRemove: true });
       unregister();
       unsubscribeAll();
+      el = undefined;
       publish({});
     },
 
@@ -396,6 +407,7 @@ export default function droppable(options) {
     /* Detach from the currently bound element without destroying the store.
      * The same store may then be rebound later. */
     unbind() {
+      if (destroyed) return;
       toggleAttributes({ forceRemove: true });
       unregister();
       el = undefined;

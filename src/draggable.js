@@ -43,6 +43,7 @@ import {
  */
 export default function draggable(options = {}) {
   let el;
+  let destroyed = false;
   let subscribers = new Set();
   let activeHandle = undefined;
 
@@ -72,7 +73,12 @@ export default function draggable(options = {}) {
     dragging: false, // Is the element currently being dragged?
   };
 
+  function assertNotDestroyed() {
+    if (destroyed) throw new Error("Cannot reuse a destroyed draggable controller.");
+  }
+
   function setElement(element) {
+    assertNotDestroyed();
     if (isElement(el) && el !== element) {
       throw new Error("Cannot bind more than once to an element.");
     }
@@ -81,6 +87,7 @@ export default function draggable(options = {}) {
   }
 
   function setOptions(newOptions) {
+    assertNotDestroyed();
     if (!newOptions) {
       _options = { disabled: true };
     } else {
@@ -107,6 +114,7 @@ export default function draggable(options = {}) {
     }
 
     callback(state);
+    if (destroyed) return () => {};
     subscribers.add(callback);
 
     return () => subscribers.delete(callback);
@@ -308,8 +316,11 @@ export default function draggable(options = {}) {
     /* Fully tear down the controller. This is terminal for the current
      * store instance. */
     destroy() {
+      if (destroyed) return;
+      destroyed = true;
       unsetHandlers();
       unsubscribeAll();
+      el = undefined;
       publish({ dragging: false });
     },
 
@@ -330,6 +341,7 @@ export default function draggable(options = {}) {
     /* Detach from the currently bound element without destroying the store.
      * The same store may then be rebound later. */
     unbind() {
+      if (destroyed) return;
       unsetHandlers();
       el = undefined;
       publish({ dragging: false });
