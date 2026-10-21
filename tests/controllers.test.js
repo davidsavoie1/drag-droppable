@@ -279,3 +279,39 @@ test("a source session replaced during target publication keeps its own cleanup"
   assert.deepEqual(targetState, {});
   assert.equal(send(targetEl, "dragover").defaultPrevented, false);
 });
+
+test("onDragEnd errors stay visible without leaving targets active", (t) => {
+  const failure = new Error("Application callback failed");
+  let ends = 0;
+  const { controller: source, element } = bind(t, draggable, {
+    type: "end-error",
+    onDragEnd: () => {
+      ends++;
+      throw failure;
+    },
+  });
+  const { controller: target, element: targetEl } = bind(t, droppable, {
+    type: "end-error",
+  });
+  let targetState;
+  target.subscribe((state) => {
+    targetState = state;
+  });
+
+  send(element, "dragstart");
+  flushFrames();
+  assert.equal(send(targetEl, "dragover").defaultPrevented, true);
+
+  /* Use synchronous controller cleanup: DOM dispatch reports listener errors
+   * separately instead of throwing them back to the dispatch caller. */
+  assert.throws(
+    () => source.unbind(),
+    (error) => error === failure,
+  );
+  assert.deepEqual(targetState, {});
+  assert.equal(targetEl.hasAttribute("data-dnd-concerned"), false);
+  assert.equal(targetEl.hasAttribute("data-dnd-can"), false);
+  assert.equal(send(targetEl, "dragover").defaultPrevented, false);
+  source.destroy();
+  assert.equal(ends, 1);
+});

@@ -259,17 +259,22 @@ export default function draggable(options = {}) {
     const { data, namespace, type, onDragEnd } = dragSession || {};
     dragSession = undefined;
 
-    if (state.dragging) {
-      setState({
-        dragging: false,
-        pointerType: undefined,
-      });
-
-      onDragEnd?.(data, type, namespace);
-    }
-
-    dragEndCleanup?.();
+    const cleanup = dragEndCleanup;
     dragEndCleanup = undefined;
+
+    try {
+      if (state.dragging) {
+        setState({
+          dragging: false,
+          pointerType: undefined,
+        });
+
+        onDragEnd?.(data, type, namespace);
+      }
+    } finally {
+      /* Application callbacks must not prevent target cleanup. */
+      cleanup?.();
+    }
   }
 
   function getHandle() {
