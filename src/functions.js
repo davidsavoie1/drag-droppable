@@ -34,6 +34,8 @@ export function isElement(el) {
   return el instanceof Element;
 }
 
+export const isNumber = (x) => typeof x === "number";
+
 export const isFunc = (fn) => typeof fn === "function";
 
 export function isObject(value) {
@@ -42,6 +44,11 @@ export function isObject(value) {
 
 export function isSyntheticEvent(e) {
   return e?.[SYNTHETIC];
+}
+
+export function cloneWhenObject(x) {
+  if (isObject(x)) return { ...x };
+  return x;
 }
 
 export function noop() {}

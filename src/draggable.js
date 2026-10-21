@@ -13,7 +13,7 @@ import {
   isTouchInProgress,
   registerTouchDnDTarget,
   unregisterTouchDnDTarget,
-} from "./touchDnd.js";
+} from "./dragDropTouch.js";
 
 /* Create a draggable DnD controller.
  *
@@ -33,8 +33,7 @@ import {
  * - touch: touch drag policy for this source.
  *   `undefined`/`true` inherit global touch DnD settings, `false`/`null`
  *   disable touch drag for this source, and an object overrides global
- *   touch settings for this source only, including options such as
- *   `pressHold`, `threshold`, or `vibration`.
+ *   touch settings for this source only.
  * - type: drag channel listened to by droppables
  *
  * Store state:
@@ -268,7 +267,7 @@ export default function draggable(options = {}) {
   function updateTouchRegistration(handle = activeHandle) {
     if (!isElement(handle)) return;
 
-    const { touch = true } = _options || {};
+    const { touch } = _options || {};
     registerTouchDnDTarget(handle, touch);
   }
 
