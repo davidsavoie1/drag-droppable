@@ -6,6 +6,7 @@ import {
   isElement,
   isFunc,
   isSyntheticEvent,
+  noop,
   preventDefault,
   preventNativeDefault,
 } from "./functions.js";
@@ -73,7 +74,8 @@ export default function draggable(options = {}) {
   };
 
   function assertNotDestroyed() {
-    if (destroyed) throw new Error("Cannot reuse a destroyed draggable controller.");
+    if (destroyed)
+      throw new Error("Cannot reuse a destroyed draggable controller.");
   }
 
   function setElement(element) {
@@ -271,8 +273,24 @@ export default function draggable(options = {}) {
     registerTouchDnDTarget(handle, touch);
   }
 
+  let unsetDataDraggable;
+
+  function setDataDraggable() {
+    const { attributesPrefix = getConfig().attributesPrefix } = _options;
+    const draggableEl = el;
+
+    if (!attributesPrefix || !draggableEl) return noop;
+
+    draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, true);
+
+    return () =>
+      draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, false);
+  }
+
   function setHandlers() {
     if (handlersSet) return;
+
+    unsetDataDraggable = setDataDraggable();
 
     const handle = getHandle();
     activeHandle = handle;
@@ -287,6 +305,8 @@ export default function draggable(options = {}) {
 
   function unsetHandlers() {
     if (!handlersSet) return;
+
+    unsetDataDraggable?.();
 
     const handle = activeHandle;
 

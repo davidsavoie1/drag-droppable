@@ -1,7 +1,7 @@
 import { getConfig } from "./configure.js";
 import { DND_STORE, DROPPABLE } from "./constants.js";
 import { registerDragListeners, unregisterDragListeners } from "./dndSubs.js";
-import { getClientRect, isElement, isFunc } from "./functions.js";
+import { getClientRect, isElement, isFunc, noop } from "./functions.js";
 
 const EVENT_TYPES_TO_BLOCK = ["dragenter", "dragleave", "dragover", "drop"];
 
@@ -51,7 +51,8 @@ export default function droppable(options) {
   let activeDragCleanup; // Cleanup shared with the source for the current session
 
   function assertNotDestroyed() {
-    if (destroyed) throw new Error("Cannot reuse a destroyed droppable controller.");
+    if (destroyed)
+      throw new Error("Cannot reuse a destroyed droppable controller.");
   }
 
   function setElement(element) {
@@ -74,7 +75,7 @@ export default function droppable(options) {
         setElement(newOptions.el);
       }
 
-      _options = rest;
+      _options = { ...rest };
     }
 
     updateRegistration();
@@ -103,6 +104,20 @@ export default function droppable(options) {
     return target || el;
   }
 
+  let unsetDataDroppable;
+
+  function setDataDroppable() {
+    const { attributesPrefix = getConfig().attributesPrefix } = _options;
+    const droppableEl = el;
+
+    if (!attributesPrefix || !droppableEl) return noop;
+
+    droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, true);
+
+    return () =>
+      droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, false);
+  }
+
   function register() {
     unregister();
 
@@ -113,10 +128,13 @@ export default function droppable(options) {
       types.map((type) => [type, createHandler(type)]),
     );
 
+    unsetDataDroppable = setDataDroppable();
+
     registerDragListeners(dragListeners);
   }
 
   function unregister() {
+    unsetDataDroppable?.();
     unregisterDragListeners(dragListeners);
     dragListeners = {};
     activeDragCleanup?.();
@@ -360,7 +378,6 @@ export default function droppable(options) {
         dragoverEl = undefined;
         handlersSet = false;
       }
-
     };
   }
 
