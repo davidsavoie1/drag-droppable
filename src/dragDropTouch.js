@@ -465,7 +465,6 @@ function destroyDragImage() {
   }
 
   state.dragImage = null;
-  state.dragImageCustom = null;
 }
 
 /* Keep the synthetic drag image visually aligned with the pointer. */

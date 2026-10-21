@@ -42,6 +42,8 @@
       // unless: { foo: (data) => data !== 42 },
     },
   ];
+
+  let dragEl = $state();
 </script>
 
 <div>
@@ -77,9 +79,9 @@
       </div>
     {/each}
 
-    <div class="draggable" use:dndDrag={{ type: "foo" }}>
+    <div class="draggable" use:dndDrag={{ dragEl, type: "foo" }}>
       Parent
-      <div class="draggable" use:dndDrag={{ type: "bar" }}>
+      <div class="draggable" use:dndDrag={{ handle: "button", type: "bar" }}>
         Enfant
         <button type="button">Bouton dans l'enfant</button>
       </div>
@@ -94,6 +96,8 @@
     {/each}
   </div>
 </section>
+
+<span bind:this={dragEl}> :) </span>
 
 <style>
   section {
