@@ -120,12 +120,12 @@ export default function droppable(options) {
     droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, true);
 
     if (namespace) {
-      droppableEl.setAttribute(`data-${attributesPrefix}-namespace`, namespace);
+      droppableEl.setAttribute(`data-${attributesPrefix}-droppable-namespace`, namespace);
     }
 
     return () => {
       droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, false);
-      droppableEl.removeAttribute(`data-${attributesPrefix}-namespace`);
+      droppableEl.removeAttribute(`data-${attributesPrefix}-droppable-namespace`);
     };
   }
 
@@ -196,8 +196,8 @@ export default function droppable(options) {
     );
 
     shouldSet
-      ? el.setAttribute(`data-${attributesPrefix}-type`, type)
-      : el.removeAttribute(`data-${attributesPrefix}-type`);
+      ? el.setAttribute(`data-${attributesPrefix}-dragged-type`, type)
+      : el.removeAttribute(`data-${attributesPrefix}-dragged-type`);
   }
 
   function unsubscribeAll() {

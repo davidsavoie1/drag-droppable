@@ -307,16 +307,16 @@ export default function draggable(options = {}) {
     draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, true);
 
     if (namespace) {
-      draggableEl.setAttribute(`data-${attributesPrefix}-namespace`, namespace);
+      draggableEl.setAttribute(`data-${attributesPrefix}-draggable-namespace`, namespace);
     }
 
     if (type) {
-      draggableEl.setAttribute(`data-${attributesPrefix}-type`, type);
+      draggableEl.setAttribute(`data-${attributesPrefix}-draggable-type`, type);
     }
     return () => {
       draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, false);
-      draggableEl.removeAttribute(`data-${attributesPrefix}-namespace`);
-      draggableEl.removeAttribute(`data-${attributesPrefix}-type`);
+      draggableEl.removeAttribute(`data-${attributesPrefix}-draggable-namespace`);
+      draggableEl.removeAttribute(`data-${attributesPrefix}-draggable-type`);
     };
   }
 
