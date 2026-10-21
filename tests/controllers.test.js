@@ -220,3 +220,62 @@ test("source and target attributes coexist and clean up independently", (t) => {
   source.destroy();
   assert.equal(element.attributes.size, 0);
 });
+
+for (const operation of ["disable", "destroy"]) {
+  test(`source ${operation} during target publication cleans every target`, (t) => {
+    const { controller: source, element } = bind(t, draggable, {
+      type: "publishing",
+    });
+    const targets = [
+      bind(t, droppable, { type: "publishing" }),
+      bind(t, droppable, { type: "publishing" }),
+    ];
+    const states = [];
+    targets.forEach(({ controller }, index) => {
+      controller.subscribe((state) => {
+        states[index] = state;
+      });
+    });
+    targets[0].controller.subscribe((state) => {
+      if (!state.dragging) return;
+      if (operation === "disable") source.patch({ disabled: true });
+      else source.destroy();
+    });
+
+    send(element, "dragstart");
+    flushFrames();
+
+    for (const [index, target] of targets.entries()) {
+      assert.deepEqual(states[index], {});
+      assert.equal(target.element.hasAttribute("data-dnd-concerned"), false);
+      assert.equal(send(target.element, "dragover").defaultPrevented, false);
+    }
+  });
+}
+
+test("a source session replaced during target publication keeps its own cleanup", (t) => {
+  const { element } = bind(t, draggable, { type: "replacement" });
+  const { controller: target, element: targetEl } = bind(t, droppable, {
+    type: "replacement",
+  });
+  let restarted = false;
+  let targetState;
+  target.subscribe((state) => {
+    targetState = state;
+    if (state.dragging && !restarted) {
+      restarted = true;
+      send(element, "dragend");
+      send(element, "dragstart");
+    }
+  });
+
+  send(element, "dragstart");
+  flushFrames();
+  assert.deepEqual(targetState, {});
+  flushFrames();
+  assert.equal(targetState.dragging, true);
+  assert.equal(send(targetEl, "dragover").defaultPrevented, true);
+  send(element, "dragend");
+  assert.deepEqual(targetState, {});
+  assert.equal(send(targetEl, "dragover").defaultPrevented, false);
+});

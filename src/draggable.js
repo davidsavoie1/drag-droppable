@@ -213,12 +213,21 @@ export default function draggable(options = {}) {
     }
 
     if (!state.dragging) {
-      dragSession = { data, namespace, type, onDragEnd };
+      const session = { data, namespace, type, onDragEnd };
+      dragSession = session;
 
       /* Await Svelte reactive updates first to allow repainting before declaring dragged data */
       pendingDragFrame = requestAnimationFrame(() => {
         pendingDragFrame = undefined;
-        dragEndCleanup = publishDrag({ namespace, type, data, onDrop });
+        const cleanup = publishDrag({ namespace, type, data, onDrop });
+
+        /* A target subscriber may end or replace this session synchronously
+         * during publication, before its cleanup becomes available. */
+        if (dragSession === session) {
+          dragEndCleanup = cleanup;
+        } else {
+          cleanup?.();
+        }
       });
 
       setState({
@@ -307,7 +316,10 @@ export default function draggable(options = {}) {
     draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, true);
 
     if (namespace) {
-      draggableEl.setAttribute(`data-${attributesPrefix}-draggable-namespace`, namespace);
+      draggableEl.setAttribute(
+        `data-${attributesPrefix}-draggable-namespace`,
+        namespace,
+      );
     }
 
     if (type) {
@@ -315,7 +327,9 @@ export default function draggable(options = {}) {
     }
     return () => {
       draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, false);
-      draggableEl.removeAttribute(`data-${attributesPrefix}-draggable-namespace`);
+      draggableEl.removeAttribute(
+        `data-${attributesPrefix}-draggable-namespace`,
+      );
       draggableEl.removeAttribute(`data-${attributesPrefix}-draggable-type`);
     };
   }
