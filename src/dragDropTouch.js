@@ -487,6 +487,9 @@ function vibrate() {
   const { vibration } = getSessionOptions() || {};
   if (!vibration) return;
 
+  /* Prevent error when no interaction has been detected */
+  if (navigator.userActivation?.hasBeenActive === false) return;
+
   const pattern =
     isNumber(vibration) || Array.isArray(vibration)
       ? vibration
