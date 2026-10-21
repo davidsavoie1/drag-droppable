@@ -192,10 +192,13 @@ export default function draggable(options = {}) {
       return;
     }
 
-    /* When touch DnD owns the current gesture, some browsers may still emit a
-     * trusted native `dragstart` on the same handle. Ignore that duplicate and
-     * keep the synthetic touch session in control. */
-    if (!isSyntheticEvent(e) && isTouchInProgress()) {
+    /* Touch drags belong to the synthetic engine. Block native long-press
+     * drags even when touch DnD is disabled, as well as native duplicates
+     * during a synthetic session. Mouse-initiated drags remain native. */
+    if (
+      !isSyntheticEvent(e) &&
+      (lastPointerType === "touch" || isTouchInProgress())
+    ) {
       preventNativeDefault(e);
       return;
     }
