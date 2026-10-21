@@ -32,6 +32,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:host": "vite --host 0.0.0.0"
+    "dev:host": "vite --host 0.0.0.0",
+    "test": "node --test",
+    "test:watch": "node --test --watch"
   }
 }

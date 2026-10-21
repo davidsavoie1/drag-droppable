@@ -25,5 +25,11 @@ export default [
   {
     ignores: ["dist", "node_modules"],
   },
+  {
+    files: ["tests/**/*.js"],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
   prettier, // disables style rules in ESLint that conflict with Prettier
 ];
