@@ -1,51 +1,57 @@
 /* [key]: Set[handlers] */
-const subscriptionsByType = new Map();
+const subscriptionsByKey = new Map();
 
 /* FOR DROPPABLES */
 
 /* Add each handler by type to `subscriptionsByType`. */
 export function registerDragListeners(
-  dragListeners, // { ...[type]: function handler() { return () => cleanUp; } }
+  dragListeners, // { ...[type]: function handler() { return () => cleanUp; } },
+  namespace,
 ) {
   Object.entries(dragListeners).forEach(([type, handler]) => {
-    if (!subscriptionsByType.has(type)) {
-      subscriptionsByType.set(type, new Set());
+    const key = createKey(namespace, type);
+    if (!subscriptionsByKey.has(key)) {
+      subscriptionsByKey.set(key, new Set());
     }
-    subscriptionsByType.get(type).add(handler);
+    subscriptionsByKey.get(key).add(handler);
   });
 }
 
 /* Add each handler by type from `subscriptionsByType`. */
 export function unregisterDragListeners(
   dragListeners, // { ...[type]: function handler() { return () => cleanUp; } }
+  namespace,
 ) {
   Object.entries(dragListeners).forEach(([type, handler]) => {
-    const set = subscriptionsByType.get(type);
+    const key = createKey(namespace, type);
+    const set = subscriptionsByKey.get(key);
     if (!set) return;
     set.delete(handler);
 
     if (set.size < 1) {
-      subscriptionsByType.delete(type);
+      subscriptionsByKey.delete(key);
     }
   });
 }
 
 /* FOR DRAGGABLES */
 
-/* Get all handlers for a given type, as array */
-function getSubscriptions(type) {
-  const set = subscriptionsByType.get(type);
+/* Get all handlers for a given namespace-type key, as array */
+function getSubscriptions(key) {
+  const set = subscriptionsByKey.get(key);
   if (!set) return [];
   return Array.from(set);
 }
 
-export function publishDrag({ type, data, onDrop }) {
-  const dragListeners = getSubscriptions(type);
+export function publishDrag({ namespace, type, data, onDrop }) {
+  const key = createKey(namespace, type);
+
+  const dragListeners = getSubscriptions(key);
   if (dragListeners?.length < 1) return;
 
   /* Each handler is supposed to return a cleanup function. */
   const cleanupFunctions = dragListeners.map((handler) =>
-    handler({ type, data, onDrop }),
+    handler({ namespace, type, data, onDrop }),
   );
 
   /* Return a cleanup function that can be called to execute
@@ -53,4 +59,8 @@ export function publishDrag({ type, data, onDrop }) {
   return function dragEndCleanup() {
     cleanupFunctions.forEach((fn) => fn?.());
   };
+}
+
+function createKey(namespace, type) {
+  return JSON.stringify({ namespace: namespace ?? "", type: type ?? "" });
 }

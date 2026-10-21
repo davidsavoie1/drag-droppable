@@ -13,6 +13,7 @@ const EVENT_TYPES_TO_BLOCK = ["dragenter", "dragleave", "dragover", "drop"];
  * Main options:
  * - data: payload associated with the drop target
  * - disabled: disables the drop target entirely
+ * - namespace: limit drag-and-drop interactions to same namespace elements
  * - onDrop: called when a compatible draggable drops on the target
  * - target: element / selector used as the effective drop zone
  * - type: shortcut for a single drag type
@@ -37,14 +38,17 @@ export default function droppable(options) {
 
   /* Internal options. Can be set externally by store method. */
   let _options = {
-    // data, // Drop data
-    // disabled, // Is drop disabled entirely?
-    // target, // Drop target element
-    // type, // Concerned by drag type
-    // types, // Concerned by drag types
-    // unless, // (draggedData, type) | { ...[type]: (draggedData, type) } Function or functions by type that can prevent drop based on dragged data
-    // when, // (draggedData, type) | { ...[type]: (draggedData, type) } Function or functions by type that can allow drop based on dragged data
-    // onDrop, // ({ dragged, drop, type, x, y, dx, dy, left, right, top, bottom })
+    /*
+    data, // Drop data
+    disabled, // Is drop disabled entirely?
+    namespace, // limit drag-and-drop interactions to same namespace elements
+    target, // Drop target element
+    type, // Concerned by drag type
+    types, // Concerned by drag types
+    unless, // (draggedData, type) | { ...[type]: (draggedData, type) } Function or functions by type that can prevent drop based on dragged data
+    when, // (draggedData, type) | { ...[type]: (draggedData, type) } Function or functions by type that can allow drop based on dragged data
+    onDrop, // ({ dragged, drop, namespace, type, x, y, dx, dy, left, right, top, bottom })
+    */
   };
 
   let dragListeners = {}; // Subscriptions to drag event by type
@@ -104,38 +108,48 @@ export default function droppable(options) {
     return target || el;
   }
 
-  let unsetDataDroppable;
+  let unsetDataAttributes;
 
-  function setDataDroppable() {
-    const { attributesPrefix = getConfig().attributesPrefix } = _options;
+  function setDataAttributes() {
+    const { attributesPrefix = getConfig().attributesPrefix, namespace } =
+      _options;
     const droppableEl = el;
 
     if (!attributesPrefix || !droppableEl) return noop;
 
     droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, true);
 
-    return () =>
+    if (namespace) {
+      droppableEl.setAttribute(`data-${attributesPrefix}-namespace`, namespace);
+    }
+
+    return () => {
       droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, false);
+      droppableEl.removeAttribute(`data-${attributesPrefix}-namespace`);
+    };
   }
+
+  let registeredNamespace;
 
   function register() {
     unregister();
 
-    const { disabled, type, types = type ? [type] : [] } = _options;
+    const { disabled, namespace, type, types = type ? [type] : [] } = _options;
     if (disabled || types.length < 1) return;
 
     dragListeners = Object.fromEntries(
       types.map((type) => [type, createHandler(type)]),
     );
 
-    unsetDataDroppable = setDataDroppable();
+    unsetDataAttributes = setDataAttributes();
 
-    registerDragListeners(dragListeners);
+    registeredNamespace = namespace;
+    registerDragListeners(dragListeners, namespace);
   }
 
   function unregister() {
-    unsetDataDroppable?.();
-    unregisterDragListeners(dragListeners);
+    unsetDataAttributes?.();
+    unregisterDragListeners(dragListeners, registeredNamespace);
     dragListeners = {};
     activeDragCleanup?.();
   }
@@ -195,6 +209,7 @@ export default function droppable(options) {
       attributesPrefix = getConfig().attributesPrefix,
       data: dropData,
       disabled,
+      namespace,
       unless,
       when,
       onDrop,
@@ -248,6 +263,7 @@ export default function droppable(options) {
         dragged: draggedData,
         dragging: true,
         drop: dropData,
+        namespace,
         type,
         unconcerned: concerned === false,
       });
@@ -342,6 +358,7 @@ export default function droppable(options) {
         const args = {
           dragged: draggedData,
           drop: dropData,
+          namespace,
           type,
           ...computePositionning(e),
         };

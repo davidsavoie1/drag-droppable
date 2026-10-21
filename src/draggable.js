@@ -28,6 +28,7 @@ import {
  * - effectAllowed: HTML5 drag `dataTransfer.effectAllowed`
  * - except: element / selector / function used to prevent drag start
  * - handle: element / selector used to initiate drag (defaults to bound element)
+ * - namespace: limit drag-and-drop interactions to same namespace elements
  * - onDrag: called when dragging starts
  * - onDragEnd: called when dragging ends
  * - onDrop: called when a compatible droppable accepts the drag
@@ -57,6 +58,7 @@ export default function draggable(options = {}) {
     dragEl, // Element used as drag image. Can be different than `el`, but default to it.
     effectAllowed, // Which drag-and-drop operations are permitted (copy, move, link, copyMove, all, etc.)
     handle, // Element used to initiate drag on which handlers are declared. Can be different than `el`, but default to it.
+    namespace, // limit drag-and-drop interactions to same namespace elements
     onDrag, // (data, type) Callback for when drag starts
     onDrop, // Same as droppable `onDrop`, but declared on the drag element
     touch, // Are touch initiated drags allowed? Includes "touch" and "pen" pointers.
@@ -68,6 +70,7 @@ export default function draggable(options = {}) {
   let lastPointerType = undefined; // Keep track of last pointer type on pointerdown
   let lastPointerDownTarget = undefined; // Store the original pointerdown target
   let pendingDragFrame = undefined; // Animation frame reference
+  let dragSession; // Source values and end callback captured at drag start
 
   let state = {
     dragging: false, // Is the element currently being dragged?
@@ -155,6 +158,8 @@ export default function draggable(options = {}) {
         unsetHandlers();
         setHandlers();
       } else {
+        unsetDataAttributes?.();
+        unsetDataAttributes = setDataAttributes();
         updateTouchRegistration(nextHandle);
       }
     }
@@ -168,8 +173,10 @@ export default function draggable(options = {}) {
       dragEl = el,
       effectAllowed,
       except,
+      namespace,
       type,
       onDrag,
+      onDragEnd,
       onDrop,
     } = _options;
 
@@ -200,10 +207,12 @@ export default function draggable(options = {}) {
     }
 
     if (!state.dragging) {
+      dragSession = { data, namespace, type, onDragEnd };
+
       /* Await Svelte reactive updates first to allow repainting before declaring dragged data */
       pendingDragFrame = requestAnimationFrame(() => {
         pendingDragFrame = undefined;
-        dragEndCleanup = publishDrag({ type, data, onDrop });
+        dragEndCleanup = publishDrag({ namespace, type, data, onDrop });
       });
 
       setState({
@@ -218,7 +227,7 @@ export default function draggable(options = {}) {
         return;
       }
 
-      onDrag?.(data, type);
+      onDrag?.(data, type, namespace);
 
       // onDrag may cancel too. Cancel the DOM drag as well as the controller.
       if (!state.dragging) preventDefault(e);
@@ -229,7 +238,8 @@ export default function draggable(options = {}) {
     cancelAnimationFrame(pendingDragFrame);
     pendingDragFrame = undefined;
 
-    const { data, type, onDragEnd } = _options;
+    const { data, namespace, type, onDragEnd } = dragSession || {};
+    dragSession = undefined;
 
     if (state.dragging) {
       setState({
@@ -237,7 +247,7 @@ export default function draggable(options = {}) {
         pointerType: undefined,
       });
 
-      onDragEnd?.(data, type);
+      onDragEnd?.(data, type, namespace);
     }
 
     dragEndCleanup?.();
@@ -273,24 +283,38 @@ export default function draggable(options = {}) {
     registerTouchDnDTarget(handle, touch);
   }
 
-  let unsetDataDraggable;
+  let unsetDataAttributes;
 
-  function setDataDraggable() {
-    const { attributesPrefix = getConfig().attributesPrefix } = _options;
+  function setDataAttributes() {
+    const {
+      attributesPrefix = getConfig().attributesPrefix,
+      namespace,
+      type,
+    } = _options;
     const draggableEl = el;
 
     if (!attributesPrefix || !draggableEl) return noop;
 
     draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, true);
 
-    return () =>
+    if (namespace) {
+      draggableEl.setAttribute(`data-${attributesPrefix}-namespace`, namespace);
+    }
+
+    if (type) {
+      draggableEl.setAttribute(`data-${attributesPrefix}-type`, type);
+    }
+    return () => {
       draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, false);
+      draggableEl.removeAttribute(`data-${attributesPrefix}-namespace`);
+      draggableEl.removeAttribute(`data-${attributesPrefix}-type`);
+    };
   }
 
   function setHandlers() {
     if (handlersSet) return;
 
-    unsetDataDraggable = setDataDraggable();
+    unsetDataAttributes = setDataAttributes();
 
     const handle = getHandle();
     activeHandle = handle;
@@ -306,7 +330,7 @@ export default function draggable(options = {}) {
   function unsetHandlers() {
     if (!handlersSet) return;
 
-    unsetDataDraggable?.();
+    unsetDataAttributes?.();
 
     const handle = activeHandle;
 

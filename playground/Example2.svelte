@@ -22,6 +22,7 @@
       touch: true,
     },
     {
+      namespace: "david",
       type: "baz",
       touch: localTouchEnabled,
     },
@@ -36,8 +37,9 @@
       types: ["bar"],
     },
     {
+      namespace: "david",
       types: ["foo", "bar", "baz"],
-      unless: { foo: (data) => data !== 42 },
+      // unless: { foo: (data) => data !== 42 },
     },
   ];
 </script>
