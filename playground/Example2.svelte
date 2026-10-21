@@ -1,28 +1,85 @@
 <script module>
-  import { dndDrag, dndDrop } from "../src";
+  import { configureDnD, dndDrag, dndDrop } from "../src";
 </script>
 
 <script>
+  let globalTouchEnabled = $state(true);
+  let localTouchEnabled = $state(true);
+
+  $effect(() => {
+    configureDnD({ touch: globalTouchEnabled });
+  });
+
+  const dragExamples = $derived([
+    {
+      data: 43,
+      type: "foo",
+      touch: undefined,
+    },
+    {
+      disabled: true,
+      type: "bar",
+      touch: true,
+    },
+    {
+      type: "baz",
+      touch: localTouchEnabled,
+    },
+  ]);
+
+  const dropExamples = [
+    {
+      disabled: true,
+      types: ["foo"],
+    },
+    {
+      types: ["bar"],
+    },
+    {
+      types: ["foo", "bar", "baz"],
+      unless: { foo: (data) => data !== 42 },
+    },
+  ];
 </script>
+
+<div>
+  <button
+    type="button"
+    onclick={() =>
+      (globalTouchEnabled = globalTouchEnabled
+        ? null
+        : globalTouchEnabled === null
+          ? false
+          : true)}
+  >
+    Touch GLOBAL : {globalTouchEnabled
+      ? "Activé"
+      : globalTouchEnabled === null
+        ? "Sur demande"
+        : "Désactivé"}
+  </button>
+
+  <button
+    type="button"
+    onclick={() => (localTouchEnabled = !localTouchEnabled)}
+  >
+    Touch local : {localTouchEnabled ? "Activé" : "Désactivé"}
+  </button>
+</div>
 
 <section>
   <div>
-    {#each ["foo", "bar", "baz"] as type (type)}
-      <div class="draggable" use:dndDrag={{ type }}>"{type}"</div>
+    {#each dragExamples as drag (drag.name || drag.type)}
+      <div class="draggable" use:dndDrag={drag}>
+        <pre><code>{JSON.stringify(drag, null, 2)}</code></pre>
+      </div>
     {/each}
   </div>
 
   <div>
-    {#each [["foo"], ["bar"], ["foo", "bar"]] as types (types.join("+"))}
-      <div
-        class="droppable"
-        use:dndDrop={{
-          attributesPrefix: "foo",
-          types,
-          unless: (_, type) => type.includes("bar"),
-        }}
-      >
-        Cible pour "{types.join('", "')}"
+    {#each dropExamples as drop (drop.name || drop.types.join("+"))}
+      <div class="droppable" use:dndDrop={drop}>
+        {JSON.stringify(drop, null, 2)}
       </div>
     {/each}
   </div>
@@ -37,39 +94,5 @@
 
   section > div {
     padding: 0.5rem 1rem;
-  }
-
-  .draggable,
-  .droppable {
-    border: 1px solid gray;
-    border-radius: 0.25rem;
-    margin-bottom: 1rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .draggable {
-    background-color: aqua;
-    height: 4rem;
-  }
-
-  .droppable {
-    background-color: beige;
-    height: 5rem;
-  }
-
-  .draggable:global([data-dnd-dragging]) {
-    outline: solid 2px red;
-  }
-
-  .droppable:global([data-foo-concerned]) {
-    outline: dashed 1px blue;
-  }
-
-  .droppable:global([data-foo-can]) {
-    outline: solid 2px green;
-  }
-
-  .droppable:global([data-foo-unconcerned]) {
-    outline: solid 1px red;
   }
 </style>

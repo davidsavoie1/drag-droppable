@@ -1,0 +1,43 @@
+.draggable,
+.droppable {
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+}
+
+.draggable {
+  background-color: #d1fae5;
+  min-height: 4rem;
+}
+
+.draggable:not([data-dnd-draggable]) {
+  background-color: #ecfdf5;
+  cursor: not-allowed;
+  color: gray;
+}
+
+.draggable[data-dnd-dragging] {
+  outline: solid 2px black;
+}
+
+.droppable {
+  background-color: #cffafe;
+  min-height: 5rem;
+}
+
+.droppable:not([data-dnd-droppable]) {
+  background-color: #ecfeff;
+  color: gray;
+}
+
+.droppable[data-dnd-concerned] {
+  outline: dashed 2px #0e7490;
+}
+
+.droppable[data-dnd-can] {
+  background-color: #67e8f9;
+}
+
+.droppable[data-dnd-unconcerned] {
+  outline: solid 1px red;
+}
