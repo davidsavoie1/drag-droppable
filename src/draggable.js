@@ -166,6 +166,9 @@ export default function draggable(options = {}) {
   }
 
   function dragstart(e) {
+    /* A nested draggable owns its event, even when it cancels the drag. */
+    if (e.target !== activeHandle) return;
+
     const {
       attributesPrefix = getConfig().attributesPrefix,
       data,
@@ -234,7 +237,10 @@ export default function draggable(options = {}) {
     }
   }
 
-  function dragend() {
+  function dragend(e) {
+    /* Internal cleanup calls have no event; bubbled child events are ignored. */
+    if (e && e.target !== activeHandle) return;
+
     cancelAnimationFrame(pendingDragFrame);
     pendingDragFrame = undefined;
 

@@ -76,6 +76,14 @@
         <pre><code>{JSON.stringify(drag, null, 2)}</code></pre>
       </div>
     {/each}
+
+    <div class="draggable" use:dndDrag={{ type: "foo" }}>
+      Parent
+      <div class="draggable" use:dndDrag={{ type: "bar" }}>
+        Enfant
+        <button type="button">Bouton dans l'enfant</button>
+      </div>
+    </div>
   </div>
 
   <div>
