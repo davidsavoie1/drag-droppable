@@ -5,6 +5,7 @@
 <script>
   let globalTouchEnabled = $state(true);
   let localTouchEnabled = $state(true);
+  let dragEnabled = $state(true);
 
   $effect(() => {
     configureDnD({ touch: globalTouchEnabled });
@@ -69,12 +70,16 @@
   >
     Touch local : {localTouchEnabled ? "Activé" : "Désactivé"}
   </button>
+
+  <button type="button" onclick={() => (dragEnabled = !dragEnabled)}>
+    Drag : {dragEnabled ? "Activé" : "Désactivé"}
+  </button>
 </div>
 
 <section>
   <div>
     {#each dragExamples as drag (drag.name || drag.type)}
-      <div class="draggable" use:dndDrag={drag}>
+      <div class="draggable" use:dndDrag={dragEnabled && drag}>
         <pre><code>{JSON.stringify(drag, null, 2)}</code></pre>
       </div>
     {/each}

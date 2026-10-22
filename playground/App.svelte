@@ -1,6 +1,5 @@
 <script module>
-  // import Example1 from "./Example1.svelte";
-  import Example2 from "./Example2.svelte";
+  import Example from "./Example4.svelte";
 </script>
 
 <script>
@@ -8,5 +7,4 @@
 
 <h1>Drag-Droppable Playground</h1>
 
-<!-- <Example1 /> -->
-<Example2 />
+<Example />

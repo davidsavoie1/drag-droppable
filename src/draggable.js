@@ -2,6 +2,7 @@ import { getConfig } from "./configure.js";
 import { DND_STORE, DRAGGABLE } from "./constants.js";
 import { publishDrag } from "./dndSubs.js";
 import {
+  cloneWhenObject,
   getClientRect,
   isElement,
   isFunc,
@@ -16,31 +17,11 @@ import {
   unregisterTouchDnDTarget,
 } from "./dragDropTouch.js";
 
-/* Create a draggable DnD controller.
- *
- * The returned object follows the Svelte store contract (`subscribe`) and can
- * be bound to a DOM node through `bind` or `use:dnd={store}`.
- *
- * Main options:
- * - data: payload associated with the drag source
- * - disabled: disables dragging entirely
- * - dragEl: element used as drag image (defaults to the bound element)
- * - effectAllowed: HTML5 drag `dataTransfer.effectAllowed`
- * - except: element / selector / function used to prevent drag start
- * - handle: element / selector used to initiate drag (defaults to bound element)
- * - namespace: limit drag-and-drop interactions to same namespace elements
- * - onDrag: called when dragging starts
- * - onDragEnd: called when dragging ends
- * - onDrop: called when a compatible droppable accepts the drag
- * - touch: touch drag policy for this source.
- *   `undefined`/`true` inherit global touch DnD settings, `false`/`null`
- *   disable touch drag for this source, and an object overrides global
- *   touch settings for this source only.
- * - type: drag channel listened to by droppables
- *
- * Store state:
- * - dragging: whether the source is currently being dragged
- * - pointerType: last initiating pointer type when dragging
+/**
+ * Create a drag source controller compatible with the Svelte store contract.
+ * Bind it with `bind(element)` or `use:dndDrag={store}`.
+ * Subscribers receive `dragging` and the initiating `pointerType`.
+ * See the README for options and callback signatures.
  */
 export default function draggable(options = {}) {
   let el;
@@ -48,32 +29,19 @@ export default function draggable(options = {}) {
   let subscribers = new Set();
   let activeHandle = undefined;
 
-  /* Internal options. Can be set externally by store method. */
-  let _options = {
-    /*
-    attributesPrefix, // Prefix used with data-[prefix]-* attributes
-    data, // Drag data
-    except, // What to ignore when initiating a drag. Element, CSS selector or function.
-    disabled, // Is drag disabled entirely?
-    dragEl, // Element used as drag image. Can be different than `el`, but default to it.
-    effectAllowed, // Which drag-and-drop operations are permitted (copy, move, link, copyMove, all, etc.)
-    handle, // Element used to initiate drag on which handlers are declared. Can be different than `el`, but default to it.
-    namespace, // limit drag-and-drop interactions to same namespace elements
-    onDrag, // (data, type) Callback for when drag starts
-    onDrop, // Same as droppable `onDrop`, but declared on the drag element
-    touch, // Are touch initiated drags allowed? Includes "touch" and "pen" pointers.
-    type, // Drag type that drop tragets will listen to
-    */
-  };
-  let dragEndCleanup = undefined; // Cleanup function to execute when drag ends
-  let handlersSet = false; // Are handlers set on the element?
-  let lastPointerType = undefined; // Keep track of last pointer type on pointerdown
-  let lastPointerDownTarget = undefined; // Store the original pointerdown target
-  let pendingDragFrame = undefined; // Animation frame reference
-  let dragSession; // Source values and end callback captured at drag start
+  let _options = {};
+  let dragEndCleanup =
+    undefined; /* Cleanup function to execute when drag ends */
+  let handlersSet = false; /* Are handlers set on the element? */
+  let lastPointerType =
+    undefined; /* Keep track of last pointer type on pointerdown */
+  let lastPointerDownTarget =
+    undefined; /* Store the original pointerdown target */
+  let pendingDragFrame = undefined; /* Animation frame reference */
+  let dragSession; /* Source values and end callback captured at drag start */
 
   let state = {
-    dragging: false, // Is the element currently being dragged?
+    dragging: false /* Is the element currently being dragged? */,
   };
 
   function assertNotDestroyed() {
@@ -183,7 +151,7 @@ export default function draggable(options = {}) {
       onDrop,
     } = _options;
 
-    // Use the original pointerdown target for exception check
+    /* Use the original pointerdown target for exception check */
     const shouldIgnore = isException(except, lastPointerDownTarget || e.target);
 
     if (disabled || shouldIgnore) {
@@ -216,7 +184,7 @@ export default function draggable(options = {}) {
       const session = { data, namespace, type, onDragEnd };
       dragSession = session;
 
-      /* Await Svelte reactive updates first to allow repainting before declaring dragged data */
+      /* Defer target notification until the next frame so reactive updates can run. */
       pendingDragFrame = requestAnimationFrame(() => {
         pendingDragFrame = undefined;
         const cleanup = publishDrag({ namespace, type, data, onDrop });
@@ -236,7 +204,7 @@ export default function draggable(options = {}) {
         pointerType: lastPointerType,
       });
 
-      // A subscriber may synchronously disable or detach this source.
+      /* A subscriber may synchronously disable or detach this source. */
       if (!state.dragging) {
         preventDefault(e);
         return;
@@ -244,7 +212,7 @@ export default function draggable(options = {}) {
 
       onDrag?.(data, type, namespace);
 
-      // onDrag may cancel too. Cancel the DOM drag as well as the controller.
+      /* onDrag may cancel too. Cancel the DOM drag as well as the controller. */
       if (!state.dragging) preventDefault(e);
     }
   }
@@ -372,7 +340,6 @@ export default function draggable(options = {}) {
     handlersSet = false;
   }
 
-  /* First initialization! */
   setOptions(options);
 
   return {
@@ -395,17 +362,22 @@ export default function draggable(options = {}) {
       publish({ dragging: false });
     },
 
-    /* Apply a partial options update while preserving previous ones. */
-    patch(maybePartialOptions) {
-      if (!maybePartialOptions) return setOptions(null);
+    /**
+     * Replace all options, directly or through an updater receiving a shallow
+     * copy. Return the replacement; omitted options are not preserved.
+     * Passing or returning a falsy value resets to `{ disabled: true }`.
+     */
+    update(optionsOrFn) {
+      assertNotDestroyed();
 
-      const curr = _options || {};
-      return setOptions({ ...curr, ...maybePartialOptions });
+      if (isFunc(optionsOrFn)) {
+        const curr = cloneWhenObject(_options || {});
+        const newOptions = optionsOrFn(curr);
+        return setOptions(newOptions);
+      }
+
+      setOptions(optionsOrFn);
     },
-
-    /* Replace the whole option set. Passing a falsy value disables the
-     * controller by resetting it to `{ disabled: true }`. */
-    set: setOptions,
 
     subscribe,
 

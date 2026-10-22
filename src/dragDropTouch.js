@@ -32,18 +32,12 @@ const DEFAULT_STATE = {
 
 const REMOVED_ATTRIBUTES = ["id", "class", "style", "draggable"];
 
-/* Shared touch engine for the current document. This module owns gesture
- * state and DOM events; global defaults live in configure.js, independently
- * of the controllers and the Svelte action adapter. */
-/* Per-draggable-handle touch config. Keys are draggable elements (usually
- * drag handles), values are:
- * - `undefined`: inherit global behavior
- * - `false`: disable touch DnD for that element
- * - object: override touch behavior for that element */
+/* Shared touch engine for the current document. Global defaults live in
+ * configure.js; this map keeps raw local options for each draggable handle. */
 const configByElement = new WeakMap();
 
 /* Session state for the current drag candidate / active drag. `sessionOptions`
- * are resolved once on `touchstart` from global + local config, then frozen
+ * are resolved once on `touchstart` from global + local config, then kept
  * until the drag completes so updates do not affect an in-flight gesture. */
 let state = cloneWhenObject(DEFAULT_STATE);
 let restoreUserSelect = null;
@@ -86,9 +80,7 @@ export function isTouchInProgress() {
   return !!state.dragSource;
 }
 
-/* Register or update touch behavior for a draggable element. This should be
- * the actual element carrying the `draggable` attribute, which in this codebase
- * is usually the resolved `handle` rather than the larger semantic drag item. */
+/* Register raw local touch options on the resolved draggable handle. */
 export function registerTouchDnDTarget(el, config) {
   if (!el) return;
   configByElement.set(el, config);
@@ -98,8 +90,8 @@ export function unregisterTouchDnDTarget(el) {
   if (!el) return;
   configByElement.delete(el);
 
-  // The draggable controller has already ended its drag and removed its
-  // handlers. Cancel the touch engine too, without emitting another dragend.
+  /* The draggable controller has already ended its drag and removed its
+   * handlers. Cancel the touch engine too, without emitting another dragend. */
   if (state.dragSource === el) {
     reset("source unregistered");
   }
@@ -173,8 +165,8 @@ function startDrag(e) {
   const { dragSource } = session;
 
   const dragstartEvent = dispatchSyntheticEvent(e, "dragstart", dragSource);
-  // onDrag or a store subscriber may unregister the source synchronously.
-  // reset() replaces state; do not resume a session that was cancelled.
+  /* onDrag or a store subscriber may unregister the source synchronously.
+   * reset() replaces state; do not resume a session that was cancelled. */
   if (state !== session) return;
   if (dragstartEvent.defaultPrevented) {
     reset("dragstart prevented");
@@ -239,8 +231,8 @@ function handleTouchMove(e) {
   handleDragover(e);
 }
 
-/* Finish the touch session. If the current target accepted `dragover`, emit
- * `drop`, then always emit `dragend` and clear the session. */
+/* On release, emit drop if a target accepted dragover. Cancellation skips
+ * drop. Both paths emit dragend and clear the session. */
 function handleTouchEnd(e) {
   if (!shouldHandle(e)) return;
 
@@ -257,8 +249,8 @@ function handleTouchEnd(e) {
 function shouldHandle(e) {
   if (!e) return false;
 
-  // A second finger cancels the session, even if another listener has
-  // prevented this event. Leave the browser free to handle multitouch.
+  /* A second finger cancels the session, even if another listener has
+   * prevented this event. Leave the browser free to handle multitouch. */
   if (e.touches?.length > 1) {
     if (state.dragSource) {
       try {
@@ -324,16 +316,10 @@ function getSessionOptions() {
   return state.sessionOptions;
 }
 
-/* Resolve touch behavior for the specific draggable element touched.
- *
- * Resolution rules:
- * - global `false`: hard-disable touch DnD everywhere
- * - global `null`: no inherited defaults; only explicit local objects opt in
- * - local falsy: disable touch DnD for this element
- * - local object: enable for this element with merged options
- * - otherwise: inherit the active global config */
+/* Global false overrides all local options. Global null requires a local
+ * opt-in (true or object), resolved against defaults. Otherwise, undefined
+ * inherits, falsy disables, and an object overrides the global touch options. */
 function resolveSessionOptions(source) {
-  /* Global config should only be falsy or an object */
   const globalConfig = getTouchConfig();
   const localConfig = configByElement.get(source);
 
@@ -366,8 +352,7 @@ function reset(reason) {
   restoreUserSelect?.();
   restoreUserSelect = null;
 
-  /* When touch ends, remove dragstart event listener to reallow native behaviour.
-   * Could be necessary for example on screens with touch capabilities. */
+  /* Restore native dragging for later mouse interactions. */
   state.dragSource?.removeEventListener("dragstart", preventNativeDefault);
 
   state = cloneWhenObject(DEFAULT_STATE);
@@ -486,7 +471,7 @@ function vibrate() {
   const { vibration } = getSessionOptions() || {};
   if (!vibration) return;
 
-  /* Prevent error when no interaction has been detected */
+  /* Avoid calling vibration before the browser has recorded user activation. */
   if (navigator.userActivation?.hasBeenActive === false) return;
 
   const pattern =
@@ -497,8 +482,8 @@ function vibrate() {
   navigator?.vibrate?.(pattern);
 }
 
-/* Recursively copy computed styles to preserve the source appearance in the
- * synthetic drag image. */
+/* Remove identity and styling attributes, then inline computed styles on the
+ * clone and its descendants. Skip transitions to keep the image stable. */
 function copyStylesDeep(source, clone) {
   REMOVED_ATTRIBUTES.forEach((attr) => clone.removeAttribute(attr));
 

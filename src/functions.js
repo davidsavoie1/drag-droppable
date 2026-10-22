@@ -10,8 +10,7 @@ const POINTER_PROPS = [
   "screenY",
 ];
 
-/* Return the bounding client rect of the element
- * or the one from the first child that return one, recursively. */
+/* Return the first nonzero bounding rect, checking descendants if needed. */
 export function getClientRect(el) {
   if (!el) return null;
   const rect = el.getBoundingClientRect();
@@ -65,13 +64,8 @@ export function preventNativeDefault(e) {
   }
 }
 
-/* Create and dispatch a synthetic drag/drop-related DOM event.
- *
- * This is shared by the touch DnD engine so the low-level event-shaping logic
- * lives in one place: copy pointer/keyboard fields from the source event, mark
- * the event as synthetic, attach the session `dataTransfer`, dispatch it, then
- * return it so callers can inspect `defaultPrevented`.
- */
+/* Dispatch a marked synthetic event with pointer/keyboard fields and the
+ * session dataTransfer. Return it so callers can inspect defaultPrevented. */
 export function dispatchSyntheticEvent(
   rootDocument,
   sourceEvent,

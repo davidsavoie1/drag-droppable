@@ -1,34 +1,21 @@
 import { getConfig } from "./configure.js";
 import { DND_STORE, DROPPABLE } from "./constants.js";
 import { registerDragListeners, unregisterDragListeners } from "./dndSubs.js";
-import { getClientRect, isElement, isFunc, noop } from "./functions.js";
+import {
+  cloneWhenObject,
+  getClientRect,
+  isElement,
+  isFunc,
+  noop,
+} from "./functions.js";
 
 const EVENT_TYPES_TO_BLOCK = ["dragenter", "dragleave", "dragover", "drop"];
 
-/* Create a droppable DnD controller.
- *
- * The returned object follows the Svelte store contract (`subscribe`) and can
- * be bound to a DOM node through `bind` or `use:dnd={store}`.
- *
- * Main options:
- * - data: payload associated with the drop target
- * - disabled: disables the drop target entirely
- * - namespace: limit drag-and-drop interactions to same namespace elements
- * - onDrop: called when a compatible draggable drops on the target
- * - target: element / selector used as the effective drop zone
- * - type: shortcut for a single drag type
- * - types: drag channels accepted by this drop target
- * - unless: predicate or map of predicates that forbids drops
- * - when: predicate or map of predicates that allows drops
- *
- * Store state:
- * - dragging: whether a compatible drag is currently active
- * - concerned: whether the target accepts the current dragged data
- * - canDrop: false before entering, true while over the target, null after leave
- * - dragged: payload from the draggable source
- * - drop/data: payload of the drop target
- * - type: current drag channel
- * - x/y/dx/dy/left/right/top/bottom: last known pointer position over target
+/**
+ * Create a drop target controller compatible with the Svelte store contract.
+ * Bind it with `bind(element)` or `use:dndDrop={store}`.
+ * Subscribers receive the active drag context, acceptance and hover position.
+ * See the README for options and callback signatures.
  */
 export default function droppable(options) {
   let el;
@@ -36,23 +23,10 @@ export default function droppable(options) {
   let subscribers = new Set();
   let state = {};
 
-  /* Internal options. Can be set externally by store method. */
-  let _options = {
-    /*
-    data, // Drop data
-    disabled, // Is drop disabled entirely?
-    namespace, // limit drag-and-drop interactions to same namespace elements
-    target, // Drop target element
-    type, // Concerned by drag type
-    types, // Concerned by drag types
-    unless, // (draggedData, type) | { ...[type]: (draggedData, type) } Function or functions by type that can prevent drop based on dragged data
-    when, // (draggedData, type) | { ...[type]: (draggedData, type) } Function or functions by type that can allow drop based on dragged data
-    onDrop, // ({ dragged, drop, namespace, type, x, y, dx, dy, left, right, top, bottom })
-    */
-  };
+  let _options = {};
 
-  let dragListeners = {}; // Subscriptions to drag event by type
-  let activeDragCleanup; // Cleanup shared with the source for the current session
+  let dragListeners = {}; /* Subscriptions to drag event by type */
+  let activeDragCleanup; /* Cleanup shared with the source for the current session */
 
   function assertNotDestroyed() {
     if (destroyed)
@@ -120,12 +94,17 @@ export default function droppable(options) {
     droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, true);
 
     if (namespace) {
-      droppableEl.setAttribute(`data-${attributesPrefix}-droppable-namespace`, namespace);
+      droppableEl.setAttribute(
+        `data-${attributesPrefix}-droppable-namespace`,
+        namespace,
+      );
     }
 
     return () => {
       droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, false);
-      droppableEl.removeAttribute(`data-${attributesPrefix}-droppable-namespace`);
+      droppableEl.removeAttribute(
+        `data-${attributesPrefix}-droppable-namespace`,
+      );
     };
   }
 
@@ -222,16 +201,25 @@ export default function droppable(options) {
     const _when = dipatchByType(when, type);
 
     return function handler({ data: draggedData, onDrop: draggedOnDrop }) {
+      const baseArgs = {
+        dragged: draggedData,
+        drop: dropData,
+        namespace,
+        type,
+      };
+
+      /* Evaluate acceptance once for this drag, before installing DOM handlers. */
       const concerned = !!(
-        (!_when || _when(draggedData, type)) &&
-        (!_unless || !_unless(draggedData, type))
+        (!_when || _when(draggedData, baseArgs)) &&
+        (!_unless || !_unless(draggedData, baseArgs))
       );
 
       const target = getTarget();
 
-      let handlersSet = false; // Are handlers set on the element?
-      let dragoverEl = undefined; // Element being dragged over
-      let lastPositionning = {}; // Last positionning of dragged element over drop
+      let handlersSet = false; /* Are handlers set on the element? */
+      let dragoverEl = undefined; /* Element being dragged over */
+      let lastPositionning =
+        {}; /* Last positionning of dragged element over drop */
 
       let cleaned = false;
       let cleanupHandlers;
@@ -244,8 +232,8 @@ export default function droppable(options) {
         resetState();
       }
 
-      // Install and retain cleanup before notifying subscribers: a subscriber
-      // may immediately disable or detach this target.
+      /* Install and retain cleanup before notifying subscribers: a subscriber
+       * may immediately disable or detach this target. */
       activeDragCleanup?.();
       activeDragCleanup = cleanup;
       if (concerned) {
@@ -256,15 +244,13 @@ export default function droppable(options) {
       }
 
       publish({
+        ...baseArgs,
         attributesPrefix,
         canDrop: false,
         concerned,
-        data: dropData,
-        dragged: draggedData,
+
         dragging: true,
-        drop: dropData,
-        namespace,
-        type,
+
         unconcerned: concerned === false,
       });
 
@@ -356,10 +342,7 @@ export default function droppable(options) {
         if (e.target !== dragoverEl) return;
 
         const args = {
-          dragged: draggedData,
-          drop: dropData,
-          namespace,
-          type,
+          ...baseArgs,
           ...computePositionning(e),
         };
 
@@ -384,7 +367,6 @@ export default function droppable(options) {
         handlersSet = true;
       }
 
-      /* CLEANUP */
       function unsetHandlers() {
         if (!handlersSet) return;
 
@@ -398,7 +380,6 @@ export default function droppable(options) {
     };
   }
 
-  /* First initialization! */
   setOptions(options);
 
   return {
@@ -422,19 +403,22 @@ export default function droppable(options) {
       publish({});
     },
 
-    /* Apply a partial options update while preserving previous ones. */
-    patch(maybePartialOptions) {
-      /* If falsy partial options, `setOptions` will disable */
-      if (!maybePartialOptions) return setOptions(null);
+    /**
+     * Replace all options, directly or through an updater receiving a shallow
+     * copy. Return the replacement; omitted options are not preserved.
+     * Passing or returning a falsy value resets to `{ disabled: true }`.
+     */
+    update(optionsOrFn) {
+      assertNotDestroyed();
 
-      /* Override current options with new partial ones */
-      const curr = _options || {};
-      return setOptions({ ...curr, ...maybePartialOptions });
+      if (isFunc(optionsOrFn)) {
+        const curr = cloneWhenObject(_options || {});
+        const newOptions = optionsOrFn(curr);
+        return setOptions(newOptions);
+      }
+
+      setOptions(optionsOrFn);
     },
-
-    /* Replace the whole option set. Passing a falsy value disables the
-     * controller by resetting it to `{ disabled: true }`. */
-    set: setOptions,
 
     subscribe,
 
@@ -448,15 +432,12 @@ export default function droppable(options) {
       publish({});
     },
 
-    /* Special internal variables to identify which type of store it is */
     [DND_STORE]: true,
     [DROPPABLE]: true,
   };
 }
 
-/* Return a function (or undefined) to handle a certain provided type.
- * If first argument is a function, it handles any type.
- * Otherwise, a function could by provided as a prop at the type key. */
+/* Use a shared callback or select the callback for this drag type. */
 function dipatchByType(fnOrFnsMap, type) {
   if (typeof fnOrFnsMap === "function") return fnOrFnsMap;
   const fn = fnOrFnsMap?.[type];

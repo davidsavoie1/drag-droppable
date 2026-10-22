@@ -2,16 +2,8 @@ import draggable from "./draggable.js";
 import droppable from "./droppable.js";
 import { isDnDStore } from "./functions.js";
 
-/* Svelte action adapter for DnD controllers.
- *
- * Supported usages:
- * - use:dnd={existingDnDStore}
- * - use:dnd={{ draggable: true, ...options }}
- * - use:dnd={{ droppable: true, ...options }}
- *
- * When plain options are passed, the action creates and owns the underlying
- * store. When an existing store is passed, the action only binds/unbinds it.
- */
+/* Shared adapter: own and destroy stores created from options; only unbind
+ * supplied stores. A bound store instance cannot be replaced through update. */
 export function dnd(el, args) {
   if (isDnDStore(args)) {
     const { bind, unbind } = args;
@@ -20,7 +12,7 @@ export function dnd(el, args) {
     return {
       destroy: unbind,
       update(newArgs) {
-        /* Nevermind the update if the store stays the same. */
+        /* Configuration changes belong to the supplied store. */
         if (newArgs === args) return;
 
         throw new Error("Cannot update DnD store in 'dnd'.");
@@ -46,19 +38,29 @@ export function dnd(el, args) {
     );
   }
 
-  const { bind, destroy, set } = dndStore;
+  const { bind, destroy, update } = dndStore;
   bind(el);
 
   return {
     destroy,
-    update: set,
+    update,
   };
 }
 
+/**
+ * Bind a drag source using options or an existing controller.
+ * Also usable as a Svelte action: `use:dndDrag={optionsOrStore}`.
+ * Returns `update` and `destroy`; supplied stores are only unbound on destroy.
+ */
 export function dndDrag(el, args) {
   return dnd(el, isDnDStore(args) ? args : { ...args, draggable: true });
 }
 
+/**
+ * Bind a drop target using options or an existing controller.
+ * Also usable as a Svelte action: `use:dndDrop={optionsOrStore}`.
+ * Returns `update` and `destroy`; supplied stores are only unbound on destroy.
+ */
 export function dndDrop(el, args) {
   return dnd(el, isDnDStore(args) ? args : { ...args, droppable: true });
 }

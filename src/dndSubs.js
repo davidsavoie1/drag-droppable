@@ -1,13 +1,8 @@
-/* [key]: Set[handlers] */
+/* Handlers grouped by namespace and drag type. */
 const subscriptionsByKey = new Map();
 
-/* FOR DROPPABLES */
-
-/* Add each handler by type to `subscriptionsByType`. */
-export function registerDragListeners(
-  dragListeners, // { ...[type]: function handler() { return () => cleanUp; } },
-  namespace,
-) {
+/* Register target handlers within a namespace. */
+export function registerDragListeners(dragListeners, namespace) {
   Object.entries(dragListeners).forEach(([type, handler]) => {
     const key = createKey(namespace, type);
     if (!subscriptionsByKey.has(key)) {
@@ -17,11 +12,8 @@ export function registerDragListeners(
   });
 }
 
-/* Add each handler by type from `subscriptionsByType`. */
-export function unregisterDragListeners(
-  dragListeners, // { ...[type]: function handler() { return () => cleanUp; } }
-  namespace,
-) {
+/* Remove target handlers and discard empty groups. */
+export function unregisterDragListeners(dragListeners, namespace) {
   Object.entries(dragListeners).forEach(([type, handler]) => {
     const key = createKey(namespace, type);
     const set = subscriptionsByKey.get(key);
@@ -34,28 +26,24 @@ export function unregisterDragListeners(
   });
 }
 
-/* FOR DRAGGABLES */
-
-/* Get all handlers for a given namespace-type key, as array */
+/* Snapshot listeners so registration changes do not affect this publication. */
 function getSubscriptions(key) {
   const set = subscriptionsByKey.get(key);
   if (!set) return [];
   return Array.from(set);
 }
 
+/* Notify matching targets and collect their end-of-drag cleanup functions. */
 export function publishDrag({ namespace, type, data, onDrop }) {
   const key = createKey(namespace, type);
 
   const dragListeners = getSubscriptions(key);
   if (dragListeners?.length < 1) return;
 
-  /* Each handler is supposed to return a cleanup function. */
   const cleanupFunctions = dragListeners.map((handler) =>
     handler({ namespace, type, data, onDrop }),
   );
 
-  /* Return a cleanup function that can be called to execute
-   * each handlers' cleanup function. */
   return function dragEndCleanup() {
     cleanupFunctions.forEach((fn) => fn?.());
   };
