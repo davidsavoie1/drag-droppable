@@ -108,6 +108,28 @@ The `draggable` and `droppable` stores conform to the [Svelte store contract](ht
 </div>
 ```
 
+## TypeScript
+
+Type declarations are included; no Svelte dependency is required. Data types are inferred from the `data` option. When callbacks need both sides typed, specify the local data type first and the other side's type second:
+
+```ts
+import { droppable } from "drag-droppable";
+
+type Baby = { name: string; hunger: number };
+type Food = { name: string; quality: number };
+
+const baby = droppable<Baby, Food>({
+  type: "food",
+  data: { name: "Mia", hunger: 6 },
+  when: (food, { drop }) => drop.hunger > 0 && food.quality > 0,
+  onDrop: ({ dragged: food, drop }) => {
+    drop.hunger = Math.max(0, drop.hunger - food.quality);
+  },
+});
+```
+
+The same convention applies to `draggable`, `dndDrag` and `dndDrop`. Unspecified data types default to `unknown`. Types cannot enforce that independently configured drag sources and drop targets carry matching data; keep their `type` and `namespace` contracts consistent.
+
 ## Draggable
 
 An element can be declared draggable with `dndDrag`.
@@ -230,7 +252,7 @@ const {
 Both receive the dragged data first, then a context object containing `{ dragged, drop, namespace, type }`. For example:
 
 ```js
-when: (food, { drop: baby }) => baby.hunger > 0 && food.texture === "smooth"
+when: (food, { drop: baby }) => baby.hunger > 0 && food.texture === "smooth";
 ```
 
 For matching types and namespaces, acceptance is evaluated when the drag is announced to the droppable, near the start of the drag. The predicates are not continuously re-evaluated during hover or checked again at drop time. Changing the referenced data alone does not refresh acceptance for the current drag.
@@ -364,7 +386,7 @@ In Svelte, the `use:` directive handles these changes directly using `update` in
 <div
   use:dndDrop={{
     types: ["food", "toy"],
-    disabled: babySleeps, /* Updates reactively. */
+    disabled: babySleeps /* Updates reactively. */,
   }}
 >
   Baby Mouth

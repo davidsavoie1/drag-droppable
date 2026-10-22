@@ -8,7 +8,10 @@
   ],
   "repository": "github:davidsavoie1/drag-droppable",
   "main": "./src/index.js",
-  "exports": "./src/index.js",
+  "exports": {
+    "types": "./src/index.d.ts",
+    "default": "./src/index.js"
+  },
   "keywords": [
     "dnd",
     "drag-and-drop",
@@ -35,5 +38,6 @@
     "dev:host": "vite --host 0.0.0.0",
     "test": "node --test",
     "test:watch": "node --test --watch"
-  }
+  },
+  "types": "./src/index.d.ts"
 }
