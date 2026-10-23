@@ -442,6 +442,7 @@ function createDragImage(e) {
   copyStylesDeep(source, clone);
   clone.style.top = "-9999px";
   clone.style.left = "-9999px";
+  clone.style.opacity = String(getSessionOptions()?.dragImageOpacity ?? 0.5);
 
   if (!state.dragImageCustom) {
     const rect = source.getBoundingClientRect();
@@ -450,7 +451,6 @@ function createDragImage(e) {
       x: point.x - rect.left,
       y: point.y - rect.top,
     };
-    clone.style.opacity = String(getSessionOptions()?.dragImageOpacity ?? 0.5);
   }
 
   state.dragImage = clone;
