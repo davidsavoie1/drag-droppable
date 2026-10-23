@@ -370,6 +370,13 @@ export default function droppable(options) {
       const rect = getClientRect(target);
       if (!rect) return {};
 
+      /* Resolve thresholds per event so local and global updates affect this drag. */
+      const config = getConfig();
+      const {
+        bottomTopThreshold = config.bottomTopThreshold,
+        leftRightThreshold = config.leftRightThreshold,
+      } = _options;
+
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
@@ -381,15 +388,16 @@ export default function droppable(options) {
         y,
         dx,
         dy,
-        left: dx < 0.5,
-        right: dx >= 0.5,
-        top: dy < 0.5,
-        bottom: dy >= 0.5,
+        left: isOnSide(dx, leftRightThreshold),
+        right: isOnSide(dx, leftRightThreshold, true),
+        top: isOnSide(dy, bottomTopThreshold),
+        bottom: isOnSide(dy, bottomTopThreshold, true),
       };
     }
 
     function positionningChanged(positionning) {
-      return ["x", "y", "dx", "dy"].some(
+      /* A threshold change can alter side flags without changing coordinates. */
+      return ["x", "y", "dx", "dy", "left", "right", "top", "bottom"].some(
         (k) => positionning?.[k] !== lastPositionning?.[k],
       );
     }
@@ -521,4 +529,16 @@ function dipatchByType(fnOrFnsMap, type) {
   if (typeof fnOrFnsMap === "function") return fnOrFnsMap;
   const fn = fnOrFnsMap?.[type];
   return typeof fn === "function" ? fn : undefined;
+}
+
+/* Classify an edge zone, capped at half the axis. Right/bottom include the
+ * boundary; left/top exclude it, preserving the default midpoint split. */
+function isOnSide(position, threshold, reversed) {
+  if (!threshold || threshold <= 0) return false;
+
+  const coercedThreshold = Math.min(0.5, threshold);
+
+  return reversed
+    ? position >= 1 - coercedThreshold
+    : position < coercedThreshold;
 }

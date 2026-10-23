@@ -477,3 +477,71 @@ test("a source onDrop still runs when the target has no callback", (t) => {
   assert.equal(received.drop.hunger, 3);
   send(source.element, "dragend");
 });
+
+for (const coordinate of [25, 75]) {
+  test(`threshold changes at identical coordinates (${coordinate}) update side state and attributes`, (t) => {
+    const target = bind(t, droppable, {
+      type: "food",
+      bottomTopThreshold: 0.5,
+      leftRightThreshold: 0.5,
+    });
+    const source = start(t);
+    send(target.element, "dragover", {
+      clientX: coordinate,
+      clientY: coordinate,
+    });
+    const before = target.controller.getSnapshot();
+    assert.equal(before.canDrop, true);
+    assert.equal(before[coordinate < 50 ? "top" : "bottom"], true);
+    assert.equal(before[coordinate < 50 ? "left" : "right"], true);
+
+    target.controller.update((current) => ({
+      ...current,
+      bottomTopThreshold: 0.2,
+      leftRightThreshold: 0.2,
+    }));
+    send(target.element, "dragover", {
+      clientX: coordinate,
+      clientY: coordinate,
+    });
+    const centered = target.controller.getSnapshot();
+    assert.equal(centered.canDrop, true);
+    assert.equal(centered.x, before.x);
+    assert.equal(centered.y, before.y);
+    for (const side of ["top", "bottom", "left", "right"]) {
+      assert.equal(centered[side], false, side);
+      assert.equal(
+        target.element.hasAttribute(`data-dnd-${side}`),
+        false,
+        side,
+      );
+    }
+
+    /* With no further change, another event must not publish a new snapshot. */
+    send(target.element, "dragover", {
+      clientX: coordinate,
+      clientY: coordinate,
+    });
+    assert.equal(target.controller.getSnapshot(), centered);
+
+    target.controller.update((current) => ({
+      ...current,
+      bottomTopThreshold: 0.5,
+      leftRightThreshold: 0.5,
+    }));
+    send(target.element, "dragover", {
+      clientX: coordinate,
+      clientY: coordinate,
+    });
+    const restored = target.controller.getSnapshot();
+    for (const side of ["top", "bottom", "left", "right"]) {
+      assert.equal(restored[side], before[side], side);
+      assert.equal(
+        target.element.hasAttribute(`data-dnd-${side}`),
+        before[side],
+        side,
+      );
+    }
+    send(source.element, "dragend");
+  });
+}

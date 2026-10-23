@@ -11,6 +11,11 @@ export const DEFAULT_TOUCH_OPTIONS = {
 const DEFAULT_CONFIG = {
   /* Falsy disables data attributes; local options may override this prefix. */
   attributesPrefix: "dnd",
+  /* Height fraction of each top/bottom edge zone; nonpositive disables the axis. */
+  bottomTopThreshold: 0.5,
+  /* Width fraction of each left/right edge zone; nonpositive disables the axis. */
+  leftRightThreshold: 0.5,
+  /* Touch configurations, handled separately */
   touch: cloneWhenObject(DEFAULT_TOUCH_OPTIONS),
 };
 
@@ -32,6 +37,7 @@ export function getTouchConfig() {
  * - null: enable only sources opting in with local true or an options object
  * - true / undefined: restore default touch options
  * - object: merge with default touch options
+ * Position thresholds are capped at 0.5 when used, not when stored here.
  * Each gesture captures its touch options at touchstart.
  */
 export default function configureDnD(options = {}) {

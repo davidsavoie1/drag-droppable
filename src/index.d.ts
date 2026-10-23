@@ -12,6 +12,10 @@ export type DisabledOptions = false | null | undefined | 0 | "";
 
 export interface DnDConfig {
   attributesPrefix?: AttributesPrefix;
+  /** Height fraction of each top/bottom zone. Default 0.5; <=0 disables; capped at 0.5. */
+  bottomTopThreshold?: number;
+  /** Width fraction of each left/right zone. Default 0.5; <=0 disables; capped at 0.5. */
+  leftRightThreshold?: number;
   touch?: TouchConfig;
 }
 
@@ -21,6 +25,8 @@ export function configureDnD(options?: DnDConfig): void;
 /** Returns a shallow copy; the nested touch object is still shared. */
 export function getConfig(): {
   attributesPrefix?: AttributesPrefix;
+  bottomTopThreshold?: number;
+  leftRightThreshold?: number;
   touch: false | null | Required<TouchOptions>;
 };
 
@@ -36,8 +42,10 @@ export interface DropPosition {
   y: number;
   dx: number;
   dy: number;
+  /** Within the configured left edge zone. Both horizontal flags may be false. */
   left: boolean;
   right: boolean;
+  /** Within the configured top edge zone. Both vertical flags may be false. */
   top: boolean;
   bottom: boolean;
 }
@@ -94,6 +102,10 @@ export interface DroppableOptions<Drop = unknown, Dragged = unknown> {
   data?: Drop;
   disabled?: boolean;
   attributesPrefix?: AttributesPrefix;
+  /** Override the global top/bottom height fraction. Zero disables this axis. */
+  bottomTopThreshold?: number;
+  /** Override the global left/right width fraction. Zero disables this axis. */
+  leftRightThreshold?: number;
   target?: HTMLElement | string;
   when?: ByType<DropPredicate<Dragged, Drop>>;
   unless?: ByType<DropPredicate<Dragged, Drop>>;

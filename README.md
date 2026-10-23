@@ -23,6 +23,7 @@ The core has no dependencies, only a few kB of modern Javascript. Optional React
 - [Droppable](#droppable)
 - [Stores](#stores)
 - [Dynamic configuration](#dynamic-configuration)
+- [Global configuration](#global-configuration)
 - [Data attributes](#data-attributes)
 - [Touch](#touch)
 - [Lifecycle](#lifecycle)
@@ -107,10 +108,10 @@ onDrop(
     y, // y position on drop element, in px.
     dx, // x position on drop element, in ratio between 0 and 1.
     dy, // y position on drop element, in ratio between 0 and 1.
-    left, // Dropped more on the left.
-    right, // Dropped more on the right.
-    top, // Dropped more on top.
-    bottom, // Dropped more on bottom.
+    left, // Within the configured left zone.
+    right, // Within the configured right zone.
+    top, // Within the configured top zone.
+    bottom, // Within the configured bottom zone.
   }) => {},
 );
 ```
@@ -210,6 +211,8 @@ const {
 
   /* Configuration */
   attributesPrefix,
+  bottomTopThreshold,
+  leftRightThreshold,
   target,
 });
 ```
@@ -265,6 +268,19 @@ dndDrop(HTMLElement, {
 **`attributesPrefix`**: Data attributes prefix to use. See [Data attributes](#data-attributes).
 
 **`target`**: Which element to use as drop target. Element or CSS selector.
+
+**`bottomTopThreshold`** and **`leftRightThreshold`**: Override the global [position thresholds](#position-thresholds) for this droppable. Omitted or `undefined` values inherit the global settings; zero disables the corresponding axis.
+
+```js
+import { dndDrop } from "drag-droppable";
+
+dndDrop(babyMouthEl, {
+  type: "food",
+  bottomTopThreshold: 0.2,
+  leftRightThreshold: 0 /* Dinner has no left or right wing. */,
+  onDrop: feedBaby,
+});
+```
 
 ### Returns
 
@@ -401,6 +417,47 @@ When an existing store is passed to a Svelte action, update its configuration th
 
 Droppables added, re-enabled, or updated during a drag immediately evaluate the active drag against their current type, namespace, and acceptance conditions. Updates preserve hover state and position while the same target element remains accepting. If the target changes or stops accepting the drag, its hover state is cleared. Newly added or reactivated targets need a `dragover` event before they can receive a drop.
 
+## Global configuration
+
+No configuration is required to get started. Use `configureDnD()` to change defaults shared by the library:
+
+```js
+import { configureDnD } from "drag-droppable";
+
+configureDnD({
+  /* Default values */
+  attributesPrefix: "dnd",
+  bottomTopThreshold: 0.5,
+  leftRightThreshold: 0.5,
+  touch: true,
+});
+```
+
+**`attributesPrefix`** sets the prefix for [data attributes](#data-attributes). For example, `"dd"` produces `data-dd-*`; a falsy value disables these attributes by default. Individual draggable and droppable options can override the prefix.
+
+**`touch`** controls touch drag-and-drop defaults. See [Touch](#touch) for its options and local override rules.
+
+Repeated calls preserve omitted non-touch settings. Touch settings revert to their defaults before applying the supplied touch configuration.
+
+### Position thresholds
+
+**`bottomTopThreshold`**: Height fraction occupied by each top/bottom edge zone.
+
+**`leftRightThreshold`**: Width fraction occupied by each left/right edge zone.
+
+Both default to `0.5`, splitting the target in halves. A threshold of `0.2` creates two 20% edge zones and a neutral 60% center where neither flag on that axis is true. Zero or a negative value disables both flags on the axis. Values above `0.5` are capped at `0.5`, so opposite zones never overlap.
+
+For example, with `leftRightThreshold: 0.2`, `left` is true when `dx < 0.2` and `right` when `dx >= 0.8`. Top/bottom use the same rules with `dy`. At the default midpoint, the exact center belongs to right/bottom.
+
+```js
+configureDnD({
+  bottomTopThreshold: 0.2,
+  leftRightThreshold: 0.2,
+});
+```
+
+These defaults apply to droppables unless they specify a [local override](#droppable). Thresholds only affect the `left`, `right`, `top`, and `bottom` flags and their data attributes. Drops can still be accepted in the neutral center.
+
 ## Data attributes
 
 The library doesn't include any styling, only data that can be used to apply styles. To simplify this process, some properties are attached to the bound elements using data attributes. By default, these attributes start with `data-dnd-`. Available attributes are:
@@ -420,7 +477,10 @@ The library doesn't include any styling, only data that can be used to apply sty
 - `data-dnd-concerned`: Present when dragged element is relevant
 - `data-dnd-unconcerned`: Present when potentially relevant dragged element is rejected by `unless` or `when` predicates
 - `data-dnd-can`: Present when dragged element is relevant and is over droppable element
-- `data-dnd-bottom|top|left|right`: Presence of each position data attribute based on dragged element placement over droppable element.
+- `data-dnd-top` / `data-dnd-bottom`: Present during an accepted hover within the configured top/bottom zone.
+- `data-dnd-left` / `data-dnd-right`: Present during an accepted hover within the configured left/right zone.
+
+Position attributes follow the [position thresholds](#position-thresholds) and are removed outside the corresponding zones or when the hover ends.
 
 Boolean attributes are either present or not. CSS can then easily target these attributes.
 
@@ -454,15 +514,7 @@ el.some-local-identifier:global([data-dnd-draggable]) {
 }
 ```
 
-The prefix used in the data attributes can be configured with `configureDnD`.
-
-```js
-import { configureDnD } from "drag-droppable";
-
-configureDnD({
-  attributesPrefix: "dd",
-});
-```
+The prefix can be changed globally or overridden on individual elements. See [Global configuration](#global-configuration).
 
 ## Touch
 
