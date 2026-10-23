@@ -130,6 +130,8 @@ export interface DnDController<Options, State> {
   destroy(): void;
   /** Replace all options. The updater receives a shallow copy. Falsy disables. */
   update(options: OptionsUpdate<Options>): void;
+  /** Read-only view of current state; repeated reads return the same reference. */
+  getSnapshot(): Readonly<State>;
   subscribe(callback: (state: State) => void): () => void;
 }
 

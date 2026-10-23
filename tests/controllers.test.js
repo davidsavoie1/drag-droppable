@@ -339,3 +339,52 @@ test("onDragEnd errors stay visible without leaving targets active", (t) => {
   source.destroy();
   assert.equal(ends, 1);
 });
+
+for (const factory of [draggable, droppable]) {
+  test(`${factory.name}: snapshots are stable reads and match subscription state`, (t) => {
+    const target = bind(t, factory, { type: "snapshot" });
+    /* Methods can be passed directly to consumers without binding `this`. */
+    const { getSnapshot } = target.controller;
+    let notified;
+    const unsubscribe = target.controller.subscribe((state) => {
+      notified = state;
+    });
+    t.after(unsubscribe);
+    const initial = getSnapshot();
+    assert.equal(getSnapshot(), initial);
+    assert.equal(initial, notified);
+    let source;
+    if (factory === draggable) source = target;
+    else source = bind(t, draggable, { type: "snapshot" });
+    send(source.element, "dragstart");
+    flushFrames();
+    const active = getSnapshot();
+    assert.notEqual(active, initial);
+    assert.equal(active.dragging, true);
+    assert.equal(active, notified);
+    assert.equal(getSnapshot(), active);
+    assert.notEqual(initial.dragging, true);
+    send(source.element, "dragend");
+    const ended = getSnapshot();
+    assert.notEqual(ended, active);
+    assert.equal(ended, notified);
+    assert.equal(getSnapshot(), ended);
+    assert.equal(active.dragging, true);
+  });
+}
+
+test("a droppable update that leaves state unchanged keeps the same snapshot", (t) => {
+  const target = bind(t, droppable, { type: "snapshot" });
+  const source = bind(t, draggable, { type: "snapshot" });
+  send(source.element, "dragstart");
+  flushFrames();
+  send(target.element, "dragover");
+  const snapshot = target.controller.getSnapshot();
+  target.controller.update((current) => ({
+    ...current,
+    types: ["snapshot"],
+    onDrop: () => {},
+  }));
+  assert.equal(target.controller.getSnapshot(), snapshot);
+  send(source.element, "dragend");
+});

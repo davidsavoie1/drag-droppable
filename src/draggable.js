@@ -372,6 +372,12 @@ export default function draggable(options = {}) {
       publish({ dragging: false });
     },
 
+    /** Return the current state by reference. Treat it as read-only.
+     * The same reference is returned until the state is replaced. */
+    getSnapshot() {
+      return state;
+    },
+
     /**
      * Replace all options, directly or through an updater receiving a shallow
      * copy. Return the replacement; omitted options are not preserved.

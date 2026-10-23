@@ -53,7 +53,7 @@ the expected result to make the failure disappear.
 
 - `configure.test.js`: partial updates and default settings.
 - `namespaces.test.js`: namespace/type isolation, late registration, and session cleanup.
-- `controllers.test.js`: lifecycle, actions, callbacks, attributes, and drops.
+- `controllers.test.js`: lifecycle, actions, callbacks, attributes, drops, and snapshot stability.
 - `dynamic.test.js`: targets joining an active drag, configuration updates, and hover positions.
 - `touch.test.js`: touch inheritance, press-and-hold, movement, and cancellation.
 - `helpers/dom.js`: a small DOM substitute shared by the scenarios.

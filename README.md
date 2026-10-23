@@ -332,6 +332,8 @@ Both stores expose similar methods:
 
 - **`subscribe(cb)`**: Register a callback to receive updates on store internal state. Returned state differs between draggable and droppable (see example below). `droppable` store subscription includes positionning of dragged element. See [`onDrop`](#ondrop) for details.
 
+- **`getSnapshot()`**: Read the current state without subscribing. Returns the same object reference until the store replaces its state. Treat this object as read-only; it is not a copy.
+
 - **`destroy()`**: Fully tear down the store.
 
 ```js
@@ -368,6 +370,20 @@ dropStore.subscribe(
   },
 );
 ```
+
+The snapshot is the same state object delivered to subscribers:
+
+```js
+const current = dropStore.getSnapshot();
+console.log(current.canDrop);
+
+/* Reading does not create a new snapshot. */
+console.log(current === dropStore.getSnapshot()); // true
+```
+
+Together, `subscribe` and `getSnapshot` provide the client-side store interface used by React's `useSyncExternalStore`. React is not a dependency of the library.
+
+Snapshots are not frozen or deeply cloned. Application data in `dragged` and `drop` retains its original references; mutating that data alone does not notify subscribers. Update configuration through `update()` and let the library manage the store's state fields.
 
 ## Dynamic configuration
 
