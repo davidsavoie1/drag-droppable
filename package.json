@@ -27,6 +27,9 @@
     "drag-and-drop",
     "drag",
     "drop",
+    "draggable",
+    "droppable",
+    "touch",
     "svelte",
     "react",
     "vue"
