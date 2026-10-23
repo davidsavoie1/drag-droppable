@@ -414,6 +414,7 @@ The library doesn't include any styling, only data that can be used to apply sty
 - `data-dnd-concerned`: Present when dragged element is relevant
 - `data-dnd-unconcerned`: Present when potentially relevant dragged element is rejected by `unless` or `when` predicates
 - `data-dnd-can`: Present when dragged element is relevant and is over droppable element
+- `data-dnd-bottom|top|left|right`: Presence of each position data attribute based on dragged element placement over droppable element.
 
 Boolean attributes are either present or not. CSS can then easily target these attributes.
 

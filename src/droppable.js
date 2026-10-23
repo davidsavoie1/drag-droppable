@@ -157,9 +157,13 @@ export default function droppable(options) {
 
     const {
       attributesPrefix = getConfig().attributesPrefix,
+      bottom,
       concerned,
       canDrop,
       dragging,
+      left,
+      right,
+      top,
       type,
       unconcerned,
     } = state;
@@ -168,11 +172,18 @@ export default function droppable(options) {
 
     const shouldSet = !forceRemove && !!dragging;
 
-    Object.entries({ can: canDrop, concerned, unconcerned }).forEach(
-      ([k, v]) => {
-        el.toggleAttribute(`data-${attributesPrefix}-${k}`, !!(shouldSet && v));
-      },
-    );
+    /* Position attributes are present only during an accepted hover. */
+    Object.entries({
+      bottom: canDrop && bottom,
+      can: canDrop,
+      concerned,
+      left: canDrop && left,
+      right: canDrop && right,
+      top: canDrop && top,
+      unconcerned,
+    }).forEach(([k, v]) => {
+      el.toggleAttribute(`data-${attributesPrefix}-${k}`, !!(shouldSet && v));
+    });
 
     shouldSet
       ? el.setAttribute(`data-${attributesPrefix}-dragged-type`, type)
@@ -291,11 +302,28 @@ export default function droppable(options) {
         lastPositionning = positionning;
         dragoverEl = overEl;
 
-        publish(
-          overEl
-            ? { ...state, canDrop: true, ...positionning }
-            : { ...state, canDrop: null },
-        );
+        publish({ ...state, canDrop: true, ...positionning });
+      }
+
+      function unsetDragoverEl() {
+        dragoverEl = null;
+        lastPositionning = {};
+        const {
+          x,
+          y,
+          dx,
+          dy,
+          left,
+          right,
+          top,
+          bottom,
+          ...stateWithoutPositionning
+        } = state;
+
+        publish({
+          ...stateWithoutPositionning,
+          canDrop: null,
+        });
       }
 
       function computePositionning(e) {
@@ -334,7 +362,7 @@ export default function droppable(options) {
 
       function dragleave(e) {
         if (e.target !== dragoverEl) return;
-        setDragoverEl(null);
+        unsetDragoverEl();
       }
 
       function drop(e) {
@@ -349,7 +377,7 @@ export default function droppable(options) {
         e.preventDefault();
         _onDrop?.(args);
         draggedOnDrop?.(args);
-        setDragoverEl(null);
+        unsetDragoverEl();
       }
 
       function setHandlers() {
