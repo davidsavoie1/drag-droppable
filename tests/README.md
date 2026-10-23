@@ -52,12 +52,14 @@ the expected result to make the failure disappear.
 ## Organization
 
 - `configure.test.js`: partial updates and default settings.
-- `namespaces.test.js`: namespace/type isolation and unsubscription.
+- `namespaces.test.js`: namespace/type isolation, late registration, and session cleanup.
 - `controllers.test.js`: lifecycle, actions, callbacks, attributes, and drops.
+- `dynamic.test.js`: targets joining an active drag, configuration updates, and hover positions.
 - `touch.test.js`: touch inheritance, press-and-hold, movement, and cancellation.
 - `helpers/dom.js`: a small DOM substitute shared by the scenarios.
 
-Each test cleans up its controllers. Global settings are reset between scenarios.
+Each test cleans up its controllers and ends any directly published drag sessions.
+Global settings are reset between scenarios.
 Test files run in separate processes; tests within a file remain sequential to
 avoid sharing an active drag session. Do not enable concurrent execution within
 these files without reviewing their isolation.
@@ -72,3 +74,14 @@ playground and real phones to check those behaviors.
 The suite is not exhaustive: add a focused scenario when fixing a bug or defining
 a new rule. The tests do not modify source files or publish the package. The
 `tests` directory is not included in the npm package.
+
+## Updates during a drag
+
+A newly registered compatible target joins the current drag immediately, even if
+there were no targets at drag start. Changing target data or predicates evaluates
+acceptance again. Disabled or unbound targets can rejoin the same drag when
+re-enabled or rebound.
+
+Configuration updates currently reset hover state. A new `dragover` is required
+before dropping; leaving and re-entering the element is not necessary. The tests
+make this limitation explicit rather than promising hover preservation.

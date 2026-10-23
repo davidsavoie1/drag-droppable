@@ -286,7 +286,7 @@ Both receive the dragged data first, then a context object containing `{ dragged
 when: (food, { drop: baby }) => baby.hunger > 0 && food.texture === "smooth";
 ```
 
-For matching types and namespaces, acceptance is evaluated when the drag is announced to the droppable, near the start of the drag. The predicates are not continuously re-evaluated during hover or checked again at drop time. Changing the referenced data alone does not refresh acceptance for the current drag.
+For matching types and namespaces, predicates are evaluated at the start of the drag or when the droppable is registered or updated during a drag. They are not continuously re-evaluated during hover.
 
 Each of them can also be defined as an object with a different handler for each type.
 
@@ -373,9 +373,14 @@ dropStore.subscribe(
 
 The argument used for initial configuration might change at runtime. For example, having a `disabled` draggable can be useful, but it probably should be based on a condition that could change.
 
-`dndDrag` and `dndDrop` both return an `update()` function. The `draggable` and `droppable` stores expose the same method.
+`dndDrag` and `dndDrop` both return an `update()` function.
+`draggable` and `droppable` stores also expose an `update()` method.
 
-An object argument replaces the entire configuration; omitted options are not preserved. An updater function receives a shallow copy of the current configuration and must return the replacement. Spread the current configuration to retain options you do not want to change.
+An object argument replaces the entire configuration; omitted options are not preserved.
+
+An updater function receives a shallow copy of the current configuration and must return the replacement. Spread the current configuration to retain options you do not want to change. The copy passed to the updater is shallow: nested objects, including `data`, still share their original references.
+
+Passing or returning a falsy value resets the configuration to `{ disabled: true }`; it does not preserve options for later reactivation.
 
 ```js
 const baby = dndDrop(babyMouthEl, {
@@ -401,8 +406,6 @@ baby.update((current) => ({
 }));
 ```
 
-The copy passed to the updater is shallow: nested objects, including `data`, still share their original references. Passing or returning a falsy value resets the configuration to `{ disabled: true }`; it does not preserve options for later reactivation.
-
 In Svelte, the `use:` directive handles these changes directly using `update` internally when configuration is passed as second argument.
 
 ```svelte
@@ -425,6 +428,8 @@ In Svelte, the `use:` directive handles these changes directly using `update` in
 ```
 
 When an existing store is passed to a Svelte action, update its configuration through the store's `update()` method. The action keeps using that same store instance.
+
+Droppables added, re-enabled, or updated during a drag immediately evaluate the active drag against their current type, namespace, and acceptance conditions. Updating a droppable resets its hover state; another `dragover` event is required before it can receive a drop.
 
 ## Data attributes
 

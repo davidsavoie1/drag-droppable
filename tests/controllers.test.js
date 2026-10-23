@@ -21,8 +21,17 @@ for (const factory of [draggable, droppable]) {
     controller.destroy();
     controller.unbind();
     assert.throws(() => controller.bind(new TestElement()), /destroyed/);
-    assert.throws(() => controller.set({ type: "other" }), /destroyed/);
-    assert.throws(() => controller.patch({ disabled: false }), /destroyed/);
+    assert.throws(() => controller.update({ type: "other" }), /destroyed/);
+    let updaterCalled = false;
+    assert.throws(
+      () =>
+        controller.update(() => {
+          updaterCalled = true;
+          return { disabled: false };
+        }),
+      /destroyed/,
+    );
+    assert.equal(updaterCalled, false);
   });
 }
 
@@ -31,18 +40,23 @@ test("source options refresh attributes and remove the previous prefix", (t) => 
     type: "task",
     namespace: "A",
   });
-  controller.patch({
+  controller.update((current) => ({
+    ...current,
+
     attributesPrefix: "custom",
     type: "document",
     namespace: "B",
-  });
+  }));
   assert.equal(element.hasAttribute("data-dnd-draggable"), false);
   assert.equal(
     element.attributes.get("data-custom-draggable-type"),
     "document",
   );
   assert.equal(element.attributes.get("data-custom-draggable-namespace"), "B");
-  controller.patch({ attributesPrefix: false });
+  controller.update((current) => ({
+    ...current,
+    attributesPrefix: false,
+  }));
   assert.equal(
     [...element.attributes.keys()].some((key) => key.startsWith("data-")),
     false,
@@ -72,7 +86,12 @@ test("end callback uses the source session even after options change", (t) => {
     onDragEnd: (...args) => ended.push(args),
   });
   send(element, "dragstart");
-  controller.patch({ namespace: "B", type: "other", data: { id: 2 } });
+  controller.update((current) => ({
+    ...current,
+    namespace: "B",
+    type: "other",
+    data: { id: 2 },
+  }));
   send(element, "dragend");
   send(element, "dragend");
   assert.deepEqual(ended, [[data, "task", "A"]]);
@@ -146,19 +165,22 @@ for (const operation of ["disable", "unbind", "destroy", "namespace"]) {
     const end = publishDrag({ namespace: "A", type: "task", data: { id: 1 } });
     t.after(end);
     assert.equal(send(element, "dragover").defaultPrevented, true);
-    if (operation === "disable") controller.patch({ disabled: true });
-    else if (operation === "namespace") controller.patch({ namespace: "B" });
+    if (operation === "disable")
+      controller.update((current) => ({ ...current, disabled: true }));
+    else if (operation === "namespace")
+      controller.update((current) => ({ ...current, namespace: "B" }));
     else controller[operation]();
     assert.equal(send(element, "dragover").defaultPrevented, false);
     send(element, "drop");
     assert.equal(drops, 0);
     assert.equal(element.hasAttribute("data-custom-can"), false);
-    const oldEnd = publishDrag({ namespace: "A", type: "task" });
-    assert.equal(oldEnd, undefined);
     assert.doesNotThrow(() => {
       end();
       end();
     });
+    const oldEnd = publishDrag({ namespace: "A", type: "task" });
+    t.after(oldEnd);
+    assert.equal(send(element, "dragover").defaultPrevented, false);
   });
 }
 
@@ -182,7 +204,8 @@ test("accepted drop supplies payload and lower-half positioning", (t) => {
 
 test("unsupported types are ignored; supported but refused sources are unconcerned", (t) => {
   const { element } = bind(t, droppable, { type: "task", when: () => false });
-  assert.equal(publishDrag({ type: "document" }), undefined);
+  const endUnsupported = publishDrag({ type: "document" });
+  endUnsupported();
   assert.equal(element.hasAttribute("data-dnd-unconcerned"), false);
   const end = publishDrag({ type: "task" });
   t.after(end);
@@ -238,7 +261,8 @@ for (const operation of ["disable", "destroy"]) {
     });
     targets[0].controller.subscribe((state) => {
       if (!state.dragging) return;
-      if (operation === "disable") source.patch({ disabled: true });
+      if (operation === "disable")
+        source.update((current) => ({ ...current, disabled: true }));
       else source.destroy();
     });
 

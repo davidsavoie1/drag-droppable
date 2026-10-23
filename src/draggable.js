@@ -29,16 +29,26 @@ export default function draggable(options = {}) {
   let subscribers = new Set();
   let activeHandle = undefined;
 
+  /* draggable options (can be updated dynamically) */
   let _options = {};
-  let dragEndCleanup =
-    undefined; /* Cleanup function to execute when drag ends */
-  let handlersSet = false; /* Are handlers set on the element? */
-  let lastPointerType =
-    undefined; /* Keep track of last pointer type on pointerdown */
-  let lastPointerDownTarget =
-    undefined; /* Store the original pointerdown target */
-  let pendingDragFrame = undefined; /* Animation frame reference */
-  let dragSession; /* Source values and end callback captured at drag start */
+
+  /* Cleanup function to execute when drag ends */
+  let dragEndCleanup = undefined;
+
+  /* Are handlers set on the element? */
+  let handlersSet = false;
+
+  /* Keep track of last pointer type on pointerdown */
+  let lastPointerType = undefined;
+
+  /* Store the original pointerdown target */
+  let lastPointerDownTarget = undefined;
+
+  /* Animation frame reference */
+  let pendingDragFrame = undefined;
+
+  /* Source values and end callback captured at drag start */
+  let dragSession;
 
   let state = {
     dragging: false /* Is the element currently being dragged? */,

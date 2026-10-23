@@ -1,6 +1,10 @@
 import { getConfig } from "./configure.js";
 import { DND_STORE, DROPPABLE } from "./constants.js";
-import { registerDragListeners, unregisterDragListeners } from "./dndSubs.js";
+import {
+  registerDragCleanup,
+  registerDragListeners,
+  unregisterDragListeners,
+} from "./dndSubs.js";
 import {
   cloneWhenObject,
   getClientRect,
@@ -254,18 +258,16 @@ export default function droppable(options) {
         cleanupHandlers = handleUnconcerned();
       }
 
+      registerDragCleanup(cleanup);
+
       publish({
         ...baseArgs,
         attributesPrefix,
         canDrop: false,
         concerned,
-
         dragging: true,
-
         unconcerned: concerned === false,
       });
-
-      return cleanup;
 
       function handleUnconcerned() {
         const prevCursor = target?.style?.cursor || "";

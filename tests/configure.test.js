@@ -4,14 +4,14 @@ import configureDnD, { getConfig, getTouchConfig } from "../src/configure.js";
 
 beforeEach(() => configureDnD({ attributesPrefix: "dnd", touch: true }));
 
-test("partial global updates preserve unrelated settings and touch overrides", () => {
+test("global updates preserve the prefix but resolve touch against defaults", () => {
   configureDnD({ attributesPrefix: "custom", touch: { pressHold: 500 } });
   configureDnD({ touch: { vibration: false } });
   assert.equal(getConfig().attributesPrefix, "custom");
-  assert.equal(getTouchConfig().pressHold, 500);
+  assert.equal(getTouchConfig().pressHold, 300);
   assert.equal(getTouchConfig().vibration, false);
   configureDnD();
-  assert.equal(getTouchConfig().pressHold, 500);
+  assert.equal(getTouchConfig().pressHold, 300);
 });
 
 test("global true restores touch defaults after custom settings or disabling", () => {

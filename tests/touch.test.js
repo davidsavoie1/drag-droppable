@@ -148,7 +148,8 @@ for (const operation of ["disable", "destroy"]) {
       },
     });
     touch(element);
-    if (operation === "disable") controller.patch({ disabled: true });
+    if (operation === "disable")
+      controller.update((current) => ({ ...current, disabled: true }));
     else controller.destroy();
     finishHold();
     assert.equal(starts, 0);

@@ -1,21 +1,37 @@
 /* Handlers grouped by namespace and drag type. */
 const subscriptionsByKey = new Map();
 
+/* Reference to cleanup functions to call at drag end */
+let cleanupFunctions = [];
+
+/* Reference to current drag session */
+let currentDrag = null;
+
+export function registerDragCleanup(cleanupFn) {
+  cleanupFunctions.push(cleanupFn);
+}
+
 /* Register target handlers within a namespace. */
 export function registerDragListeners(dragListeners, namespace) {
   Object.entries(dragListeners).forEach(([type, handler]) => {
-    const key = createKey(namespace, type);
+    const key = createKey({ namespace, type });
     if (!subscriptionsByKey.has(key)) {
       subscriptionsByKey.set(key, new Set());
     }
     subscriptionsByKey.get(key).add(handler);
+
+    /* New drag handler gets called immediately
+     * if a compatible drag session is in process. */
+    if (currentDrag && createKey(currentDrag) === key) {
+      handler(currentDrag);
+    }
   });
 }
 
 /* Remove target handlers and discard empty groups. */
 export function unregisterDragListeners(dragListeners, namespace) {
   Object.entries(dragListeners).forEach(([type, handler]) => {
-    const key = createKey(namespace, type);
+    const key = createKey({ namespace, type });
     const set = subscriptionsByKey.get(key);
     if (!set) return;
     set.delete(handler);
@@ -34,21 +50,26 @@ function getSubscriptions(key) {
 }
 
 /* Notify matching targets and collect their end-of-drag cleanup functions. */
-export function publishDrag({ namespace, type, data, onDrop }) {
-  const key = createKey(namespace, type);
+export function publishDrag(dragSession) {
+  currentDrag = dragSession;
 
-  const dragListeners = getSubscriptions(key);
-  if (dragListeners?.length < 1) return;
+  const { namespace, type, data, onDrop } = dragSession;
 
-  const cleanupFunctions = dragListeners.map((handler) =>
-    handler({ namespace, type, data, onDrop }),
-  );
+  const key = createKey({ namespace, type });
+
+  const handlers = getSubscriptions(key);
+
+  handlers?.forEach((handler) => handler({ namespace, type, data, onDrop }));
 
   return function dragEndCleanup() {
-    cleanupFunctions.forEach((fn) => fn?.());
+    const cleanups = cleanupFunctions;
+    cleanupFunctions = [];
+    currentDrag = null;
+
+    cleanups.forEach((fn) => fn?.());
   };
 }
 
-function createKey(namespace, type) {
+function createKey({ namespace, type }) {
   return JSON.stringify({ namespace: namespace ?? "", type: type ?? "" });
 }
