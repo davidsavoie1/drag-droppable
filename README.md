@@ -2,7 +2,38 @@
 
 Lightweight, data-driven, framework-independent drag-and-drop system with touch support and reactive stores.
 
-The library doesn't include any styling, only data that can be used to apply styles. Keyboard interactions are not supported for the moment.
+Attach data to draggable and droppable elements and use it to handle the drops. Drop targets react only to relevant drags based on namespace, type and respective data.
+
+**You decide how to represent the drag-and-drop interactions**... with a lot of information to do so! The library doesn't include any built-in styling that would get in the way (it would, it always does).
+
+**You decide how to handle drops**... with a lot of information to do so! No HTML mutation will actually move anything around permanently, preventing inconsistencies with the actual state of your app (it would, it always does).
+
+**You choose your favorite framework**. Although the library has been developped with Svelte in mind, it will work fine in React, Vite and even plain old Javascript.
+
+**You can use it with touch support out of the box** without any adapter or workaround... and you can configure it as you like.
+
+No dependencies, a few kB of modern Javascript code only.
+
+## Table of contents
+
+- [Table of contents](#table-of-contents)
+- [Typical usage](#typical-usage)
+- [Using `onDrop`](#using-ondrop)
+- [Usage in Svelte (optional)](#usage-in-svelte-optional)
+- [TypeScript](#typescript)
+- [Draggable](#draggable)
+- [Droppable](#droppable)
+- [Stores](#stores)
+- [Dynamic configuration](#dynamic-configuration)
+- [Data attributes](#data-attributes)
+- [Touch](#touch)
+- [Lifecycle](#lifecycle)
+- [Limitations](#limitations)
+- [Examples](#examples)
+
+## Typical usage
+
+The following example showcases a baby (a drop target element) and a variety of things it could bring to its mouth (drag elements). Data involved in the process allow deciding what can go in the mouth or not. Styling these interactions is left to the app code. No HTML mutation will actually move anything around permanently.
 
 ```js
 import { dndDrag, dndDrop } from "drag-droppable";
@@ -52,7 +83,7 @@ dndDrag(toyEl, {
 });
 ```
 
-## `onDrop`
+## Using `onDrop`
 
 An `onDrop` callback will be called when a drop successfully occurs, either from the perspective of:
 
@@ -519,6 +550,11 @@ When using the `use:` directive with `dndDrag` or `dndDrop` and a configuration 
 When a store is passed as an argument to these functions however, unmounting the bound element will simply unbind it from the store, which can then be bound again later.
 
 Svelte automatically unsubscribes from stores referenced with `$store`. Once the store is detached and no references remain, it can be garbage-collected without an explicit `destroy()` call.
+
+## Limitations
+
+- Keyboard interactions are not supported for the moment.
+- Scroll during drag is also not optimized.
 
 ## Examples
 
