@@ -9,8 +9,14 @@
   "repository": "github:davidsavoie1/drag-droppable",
   "main": "./src/index.js",
   "exports": {
-    "types": "./src/index.d.ts",
-    "default": "./src/index.js"
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./react": {
+      "types": "./src/react.d.ts",
+      "default": "./src/react.js"
+    }
   },
   "keywords": [
     "dnd",
@@ -24,12 +30,16 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/react": "^19.3.0",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.23.1",
     "globals": "^17.13.0",
+    "jsdom": "^26.1.0",
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "svelte": "^5.57.2",
     "vite": "^8.3.4"
   },
@@ -39,5 +49,13 @@
     "test": "node --test",
     "test:watch": "node --test --watch"
   },
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
 }

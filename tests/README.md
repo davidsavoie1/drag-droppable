@@ -17,8 +17,9 @@ npm run test:watch
 ```
 
 The second command keeps running and reruns the tests when files change. Press
-Ctrl+C to stop it. The test runner and assertions are built into Node: no extra
-framework or external service is required. Depending on your Node version, the
+Ctrl+C to stop it. The test runner and assertions are built into Node. React integration tests also
+use React DOM and jsdom, installed as development dependencies; no external service
+is required. Depending on your Node version, the
 mock timers used by touch tests may display an experimental warning. They advance
 time without actually waiting for the 300 ms hold delay.
 
@@ -56,7 +57,9 @@ the expected result to make the failure disappear.
 - `controllers.test.js`: lifecycle, actions, callbacks, attributes, drops, and snapshot stability.
 - `dynamic.test.js`: targets joining an active drag, configuration updates, and hover positions.
 - `touch.test.js`: touch inheritance, press-and-hold, movement, and cancellation.
-- `helpers/dom.js`: a small DOM substitute shared by the scenarios.
+- `react.test.js`: real React DOM rendering in jsdom, Strict Mode, refs, updates, and subscription opt-out.
+- `react-server.test.js`: server rendering without DOM globals.
+- `helpers/dom.js`: a small DOM substitute shared by the core scenarios.
 
 Each test cleans up its controllers and ends any directly published drag sessions.
 Global settings are reset between scenarios.
@@ -66,7 +69,7 @@ these files without reviewing their isolation.
 
 ## What still needs manual testing
 
-The DOM substitute does not reproduce rendering or native browser behavior.
+Neither the small DOM substitute nor jsdom reproduces actual layout or native browser drag behavior.
 These tests do not establish that mobile scrolling, links after a drag, actual
 event propagation, CSS drag images, or vibration behave correctly. Use the
 playground and real phones to check those behaviors.

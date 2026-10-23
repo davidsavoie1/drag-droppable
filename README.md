@@ -8,11 +8,11 @@ Attach data to draggable and droppable elements and use it to handle the drops. 
 
 **You decide how to handle drops**... with a lot of information to do so! No HTML mutation will actually move anything around permanently, preventing inconsistencies with the actual state of your app (it would, it always does).
 
-**You choose your favorite framework**. Although the library has been developped with Svelte in mind, it will work fine in React, Vite and even plain old Javascript.
+**You choose your favorite framework**. Although the library has been developped with Svelte in mind, it will work fine in React, Vite and even plain old Javascript. Optional React hooks are even provided!
 
 **You can use it with touch support out of the box** without any adapter or workaround... and you can configure it as you like.
 
-No dependencies, a few kB of modern Javascript code only.
+The core has no dependencies, only a few kB of modern Javascript. Optional React hooks use your application's React installation.
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ No dependencies, a few kB of modern Javascript code only.
 - [Typical usage](#typical-usage)
 - [Using `onDrop`](#using-ondrop)
 - [Usage in Svelte (optional)](#usage-in-svelte-optional)
-- [TypeScript](#typescript)
+- [Usage in React (optional)](#usage-in-react-optional)
 - [Draggable](#draggable)
 - [Droppable](#droppable)
 - [Stores](#stores)
@@ -30,6 +30,7 @@ No dependencies, a few kB of modern Javascript code only.
 - [Lifecycle](#lifecycle)
 - [Limitations](#limitations)
 - [Examples](#examples)
+- [TypeScript](#typescript)
 
 ## Typical usage
 
@@ -139,27 +140,60 @@ The `draggable` and `droppable` stores conform to the [Svelte store contract](ht
 </div>
 ```
 
-## TypeScript
+## Usage in React (optional)
 
-Type declarations are included; no Svelte dependency is required. Data types are inferred from the `data` option. When callbacks need both sides typed, specify the local data type first and the other side's type second:
+React 18 and 19 applications can import hooks from `drag-droppable/react`. React is an optional peer dependency; using the core entry point does not require it.
 
-```ts
-import { droppable } from "drag-droppable";
+Each hook returns `{ ref, state, controller }`. Attach `ref` to one HTML element. The hook manages binding, cleanup, configuration updates, and state subscriptions.
 
-type Baby = { name: string; hunger: number };
-type Food = { name: string; quality: number };
+```jsx
+import { useState } from "react";
+import { useDraggable, useDroppable } from "drag-droppable/react";
 
-const baby = droppable<Baby, Food>({
-  type: "food",
-  data: { name: "Mia", hunger: 6 },
-  when: (food, { drop }) => drop.hunger > 0 && food.quality > 0,
-  onDrop: ({ dragged: food, drop }) => {
-    drop.hunger = Math.max(0, drop.hunger - food.quality);
-  },
-});
+export default function Dinner() {
+  const [hunger, setHunger] = useState(6);
+  const [spoonfuls, setSpoonfuls] = useState(4);
+
+  const { ref: mealRef } = useDraggable({
+    type: "food",
+    data: { quality: 2 },
+    disabled: spoonfuls <= 0,
+  });
+
+  const { ref: babyRef, state } = useDroppable({
+    type: "food",
+    data: { hunger },
+    when: (_, { drop }) => drop.hunger > 0,
+    onDrop: ({ dragged: meal }) => {
+      setHunger((current) => Math.max(0, current - meal.quality));
+      setSpoonfuls((current) => current - 1);
+    },
+  });
+
+  return (
+    <>
+      <div ref={mealRef}>Dinner: {spoonfuls} spoonfuls left</div>
+      <div ref={babyRef} className={state.canDrop ? "open-wide" : ""}>
+        Mia: {hunger > 0 ? `Hunger: ${hunger}` : "Finally full."}
+      </div>
+    </>
+  );
+}
 ```
 
-The same convention applies to `draggable`, `dndDrag` and `dndDrop`. Unspecified data types default to `unknown`. Types cannot enforce that independently configured drag sources and drop targets carry matching data; keep their `type` and `namespace` contracts consistent.
+`state` exposes the same fields as the corresponding store and is read-only. It updates automatically; no manual `useSyncExternalStore` call is needed. React application data should be updated with React state setters, as above. Inline options, callbacks, and data objects are supported. The droppable hook reads its `state.drop` from the current options rather than subscribing to changes in the data it already receives from React.
+
+By default, position changes can trigger renders. When CSS data attributes are enough, opt out of the subscription:
+
+```jsx
+const { ref } = useDroppable(options, { subscribe: false });
+```
+
+In this mode, `state` stays at its initial idle value, while drag-and-drop callbacks and data attributes still work. The setting can be changed at runtime.
+
+Pass configuration through the hook options; `el` is replaced by `ref`. The returned `controller` provides access to `getSnapshot()` or manual subscriptions when needed. Do not destroy or bind it independently: the hook owns its DOM lifecycle. On detachment or unmount, the controller is unbound so it can survive Strict Mode's additional setup/cleanup cycle. Once unreferenced, it can be garbage-collected.
+
+Server rendering uses an idle snapshot; DOM binding happens on the client. Hooks use the same generic convention as controllers: local data first, partner data second, for example `useDroppable<Baby, Food>(options)`.
 
 ## Draggable
 
@@ -846,3 +880,25 @@ Svelte reacts to these mutations, updates the displayed values, and passes updat
 ```
 
 The whole plate is used as the drag image by default, even though only its handle starts the drag. Drop positions are measured relative to the mouth, while the store and data attributes remain attached to the article.
+
+## TypeScript
+
+Type declarations are included; no Svelte dependency is required. Data types are inferred from the `data` option. When callbacks need both sides typed, specify the local data type first and the other side's type second:
+
+```ts
+import { droppable } from "drag-droppable";
+
+type Baby = { name: string; hunger: number };
+type Food = { name: string; quality: number };
+
+const baby = droppable<Baby, Food>({
+  type: "food",
+  data: { name: "Mia", hunger: 6 },
+  when: (food, { drop }) => drop.hunger > 0 && food.quality > 0,
+  onDrop: ({ dragged: food, drop }) => {
+    drop.hunger = Math.max(0, drop.hunger - food.quality);
+  },
+});
+```
+
+The same convention applies to `draggable`, `dndDrag` and `dndDrop`. Unspecified data types default to `unknown`. Types cannot enforce that independently configured drag sources and drop targets carry matching data; keep their `type` and `namespace` contracts consistent.

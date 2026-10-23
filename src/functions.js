@@ -30,7 +30,7 @@ export function isDnDStore(arg) {
 }
 
 export function isElement(el) {
-  return el instanceof Element;
+  return typeof Element !== "undefined" && el instanceof Element;
 }
 
 export const isNumber = (x) => typeof x === "number";
