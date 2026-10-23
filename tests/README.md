@@ -82,6 +82,8 @@ there were no targets at drag start. Changing target data or predicates evaluate
 acceptance again. Disabled or unbound targets can rejoin the same drag when
 re-enabled or rebound.
 
-Configuration updates currently reset hover state. A new `dragover` is required
-before dropping; leaving and re-entering the element is not necessary. The tests
-make this limitation explicit rather than promising hover preservation.
+Configuration updates preserve hover state while the same target element remains
+accepting, including changes to callbacks, data, predicates, or equivalent type
+lists. A changed or newly accepting target needs a new `dragover` before dropping.
+Tests also cover option updates caused by store subscribers and cleanup initiated
+inside drop callbacks.

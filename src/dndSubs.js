@@ -53,13 +53,14 @@ function getSubscriptions(key) {
 export function publishDrag(dragSession) {
   currentDrag = dragSession;
 
-  const { namespace, type, data, onDrop } = dragSession;
+  const { namespace, type } = dragSession;
 
   const key = createKey({ namespace, type });
 
   const handlers = getSubscriptions(key);
 
-  handlers?.forEach((handler) => handler({ namespace, type, data, onDrop }));
+  /* Keep the same session reference for initial and later registrations. */
+  handlers.forEach((handler) => handler(dragSession));
 
   return function dragEndCleanup() {
     const cleanups = cleanupFunctions;

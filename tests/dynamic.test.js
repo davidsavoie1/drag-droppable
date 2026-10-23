@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
-import { bind, send, flushFrames } from "./helpers/dom.js";
+import { TestElement, bind, send, flushFrames } from "./helpers/dom.js";
 import { configureDnD, draggable, droppable } from "../src/index.js";
 
 beforeEach(() => configureDnD({ attributesPrefix: "dnd", touch: true }));
@@ -157,7 +157,7 @@ test("data and predicate updates re-evaluate acceptance using both payloads", (t
   assert.equal(target.element.style.cursor, "");
 });
 
-test("updating onDrop uses the new callback after another hover event", (t) => {
+test("updating onDrop preserves hover and uses the new callback without movement", (t) => {
   const calls = [];
   const target = bind(t, droppable, {
     type: "food",
@@ -170,11 +170,8 @@ test("updating onDrop uses the new callback after another hover event", (t) => {
     ...current,
     onDrop: { food: () => calls.push("new") },
   }));
-  /* Updates currently recreate target participation and reset hover state. */
-  assert.equal(snapshot.state.canDrop, false);
-  send(target.element, "drop");
-  assert.deepEqual(calls, []);
-  send(target.element, "dragover");
+  assert.equal(snapshot.state.canDrop, true);
+  assert.equal(snapshot.state.x, 25);
   send(target.element, "drop");
   assert.deepEqual(calls, ["new"]);
   send(source.element, "dragend");
@@ -261,3 +258,222 @@ for (const factory of [draggable, droppable]) {
     assert.equal(element.hasAttribute(`data-dnd-${factory.name}`), true);
   });
 }
+
+for (const change of [
+  "data",
+  "types",
+  "predicates",
+  "default namespace",
+  "prefix",
+]) {
+  test(`updating ${change} preserves an accepted hover and uses current drop data`, (t) => {
+    const food = { quality: 2 };
+    const baby = { hunger: 6 };
+    let received;
+    const target = bind(t, droppable, {
+      type: "food",
+      data: baby,
+      when: (_, { drop }) => drop.hunger > 0,
+      onDrop: (args) => {
+        received = args;
+      },
+    });
+    const snapshot = observe(target.controller);
+    const source = start(t, { data: food });
+    send(target.element, "dragover", { clientX: 75, clientY: 75 });
+    const nextBaby = change === "data" ? { hunger: 3 } : baby;
+    target.controller.update((current) => ({
+      ...current,
+      ...(change === "data" ? { data: nextBaby } : {}),
+      ...(change === "types"
+        ? { type: undefined, types: ["toy", "food"] }
+        : {}),
+      ...(change === "predicates"
+        ? { when: { food: () => true }, unless: () => false }
+        : {}),
+      ...(change === "default namespace" ? { namespace: "" } : {}),
+      ...(change === "prefix" ? { attributesPrefix: "custom" } : {}),
+    }));
+    assert.equal(snapshot.state.canDrop, true);
+    assert.equal(snapshot.state.x, 75);
+    assert.equal(snapshot.state.bottom, true);
+    const prefix = change === "prefix" ? "custom" : "dnd";
+    assert.equal(target.element.hasAttribute(`data-${prefix}-can`), true);
+    assert.equal(target.element.hasAttribute(`data-${prefix}-bottom`), true);
+    if (change === "prefix") {
+      assert.equal(
+        [...target.element.attributes.keys()].some((key) =>
+          key.startsWith("data-dnd-"),
+        ),
+        false,
+      );
+    }
+    send(target.element, "drop", { clientX: 75, clientY: 75 });
+    assert.equal(received.dragged, food);
+    assert.equal(received.drop, nextBaby);
+    send(source.element, "dragend");
+    assert.deepEqual(snapshot.state, {});
+    assert.equal(target.element.hasAttribute(`data-${prefix}-can`), false);
+  });
+}
+
+test("a target becoming refused clears hover, and becoming accepted requires another dragover", (t) => {
+  let drops = 0;
+  const target = bind(t, droppable, {
+    type: "food",
+    data: { hunger: 6 },
+    when: (_, { drop }) => drop.hunger > 0,
+    onDrop: () => {
+      drops++;
+    },
+  });
+  const snapshot = observe(target.controller);
+  const source = start(t);
+  send(target.element, "dragover");
+  target.controller.update((current) => ({ ...current, data: { hunger: 0 } }));
+  assert.equal(snapshot.state.unconcerned, true);
+  assert.equal(snapshot.state.x, undefined);
+  assert.equal(target.element.hasAttribute("data-dnd-can"), false);
+  assert.equal(target.element.style.cursor, "not-allowed");
+  send(target.element, "drop");
+  assert.equal(drops, 0);
+  target.controller.update((current) => ({ ...current, data: { hunger: 2 } }));
+  assert.equal(snapshot.state.concerned, true);
+  assert.equal(snapshot.state.canDrop, false);
+  assert.equal(target.element.style.cursor, "");
+  send(target.element, "drop");
+  assert.equal(drops, 0);
+  send(target.element, "dragover");
+  send(target.element, "drop");
+  assert.equal(drops, 1);
+  send(source.element, "dragend");
+});
+
+test("changing the actual target clears hover and moves DOM listeners", (t) => {
+  const nextTarget = new TestElement();
+  let drops = 0;
+  const target = bind(t, droppable, {
+    type: "food",
+    onDrop: () => {
+      drops++;
+    },
+  });
+  const snapshot = observe(target.controller);
+  const source = start(t);
+  send(target.element, "dragover");
+  target.controller.update((current) => ({ ...current, target: nextTarget }));
+  assert.equal(snapshot.state.canDrop, false);
+  assert.equal(snapshot.state.x, undefined);
+  assert.equal(send(target.element, "dragover").defaultPrevented, false);
+  send(nextTarget, "drop");
+  assert.equal(drops, 0);
+  send(nextTarget, "dragover");
+  send(nextTarget, "drop");
+  assert.equal(drops, 1);
+  send(source.element, "dragend");
+  assert.equal(send(nextTarget, "dragover").defaultPrevented, false);
+});
+
+test("adding and removing onDrop while hovering is effective without movement", (t) => {
+  let drops = 0;
+  const target = bind(t, droppable, { type: "food" });
+  const source = start(t);
+  send(target.element, "dragover");
+  target.controller.update((current) => ({
+    ...current,
+    onDrop: () => {
+      drops++;
+    },
+  }));
+  assert.equal(send(target.element, "drop").defaultPrevented, true);
+  assert.equal(drops, 1);
+  send(target.element, "dragover");
+  target.controller.update((current) => ({ ...current, onDrop: undefined }));
+  assert.equal(send(target.element, "drop").defaultPrevented, false);
+  assert.equal(drops, 1);
+  send(source.element, "dragend");
+});
+
+for (const operation of ["disable", "unbind", "destroy"]) {
+  test(`onDrop can ${operation} its own target without reviving stale state`, (t) => {
+    let target;
+    target = bind(t, droppable, {
+      type: "food",
+      onDrop: () => {
+        if (operation === "disable")
+          target.controller.update((current) => ({
+            ...current,
+            disabled: true,
+          }));
+        else target.controller[operation]();
+      },
+    });
+    const snapshot = observe(target.controller);
+    const source = start(t);
+    send(target.element, "dragover");
+    send(target.element, "drop");
+    assert.deepEqual(snapshot.state, {});
+    assert.equal(send(target.element, "dragover").defaultPrevented, false);
+    send(source.element, "dragend");
+  });
+}
+
+test("updating callbacks from a subscriber does not cause repeated state notifications", (t) => {
+  const target = bind(t, droppable, { type: "food" });
+  let notifications = 0;
+  target.controller.subscribe((state) => {
+    if (!state.dragging) return;
+    notifications++;
+    assert.ok(notifications <= 2, "unchanged state was published again");
+    target.controller.update((current) => ({
+      ...current,
+      types: ["food"],
+      onDrop: () => {},
+    }));
+  });
+  const source = start(t);
+  send(target.element, "dragover");
+  assert.equal(notifications, 2);
+  send(source.element, "dragend");
+});
+
+for (const operation of ["disable", "unbind", "destroy"]) {
+  test(`an acceptance predicate can ${operation} its target during refresh`, (t) => {
+    let cancel = false;
+    let target;
+    target = bind(t, droppable, {
+      type: "food",
+      when: () => {
+        if (cancel) {
+          if (operation === "disable")
+            target.controller.update({ disabled: true });
+          else target.controller[operation]();
+        }
+        return true;
+      },
+    });
+    const snapshot = observe(target.controller);
+    const source = start(t);
+    send(target.element, "dragover");
+    cancel = true;
+    target.controller.update((current) => ({ ...current }));
+    assert.deepEqual(snapshot.state, {});
+    assert.equal(send(target.element, "dragover").defaultPrevented, false);
+    send(source.element, "dragend");
+    assert.deepEqual(snapshot.state, {});
+  });
+}
+
+test("a source onDrop still runs when the target has no callback", (t) => {
+  let received;
+  const target = bind(t, droppable, { type: "food", data: { hunger: 3 } });
+  const source = start(t, {
+    onDrop: (args) => {
+      received = args;
+    },
+  });
+  send(target.element, "dragover");
+  assert.equal(send(target.element, "drop").defaultPrevented, true);
+  assert.equal(received.drop.hunger, 3);
+  send(source.element, "dragend");
+});

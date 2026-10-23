@@ -429,7 +429,7 @@ In Svelte, the `use:` directive handles these changes directly using `update` in
 
 When an existing store is passed to a Svelte action, update its configuration through the store's `update()` method. The action keeps using that same store instance.
 
-Droppables added, re-enabled, or updated during a drag immediately evaluate the active drag against their current type, namespace, and acceptance conditions. Updating a droppable resets its hover state; another `dragover` event is required before it can receive a drop.
+Droppables added, re-enabled, or updated during a drag immediately evaluate the active drag against their current type, namespace, and acceptance conditions. Updates preserve hover state and position while the same target element remains accepting. If the target changes or stops accepting the drag, its hover state is cleared. Newly added or reactivated targets need a `dragover` event before they can receive a drop.
 
 ## Data attributes
 

@@ -53,7 +53,7 @@ export type DropCallback<Dragged = unknown, Drop = unknown> = (
   event: DropEvent<Dragged, Drop>,
 ) => void;
 
-/** Acceptance is evaluated once when the drag is announced to the target. */
+/** Acceptance is evaluated when joining a drag and whenever options are updated. */
 export type DropPredicate<Dragged = unknown, Drop = unknown> = (
   dragged: Dragged,
   context: DragContext<Dragged, Drop>,

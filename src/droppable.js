@@ -30,7 +30,7 @@ export default function droppable(options) {
   let _options = {};
 
   let dragListeners = {}; /* Subscriptions to drag event by type */
-  let activeDragCleanup; /* Cleanup shared with the source for the current session */
+  let activeDrag; /* Participation kept independently of registry subscriptions. */
 
   function assertNotDestroyed() {
     if (destroyed)
@@ -66,6 +66,7 @@ export default function droppable(options) {
   function updateRegistration() {
     if (!isElement(el) || _options.disabled) {
       unregister();
+      activeDrag?.cleanup();
     } else {
       register();
     }
@@ -118,7 +119,18 @@ export default function droppable(options) {
     unregister();
 
     const { disabled, namespace, type, types = type ? [type] : [] } = _options;
-    if (disabled || types.length < 1) return;
+    if (disabled || types.length < 1) {
+      activeDrag?.cleanup();
+      return;
+    }
+
+    if (
+      activeDrag &&
+      (!types.includes(activeDrag.type) ||
+        (namespace ?? "") !== (activeDrag.session.namespace ?? ""))
+    ) {
+      activeDrag.cleanup();
+    }
 
     dragListeners = Object.fromEntries(
       types.map((type) => [type, createHandler(type)]),
@@ -134,7 +146,6 @@ export default function droppable(options) {
     unsetDataAttributes?.();
     unregisterDragListeners(dragListeners, registeredNamespace);
     dragListeners = {};
-    activeDragCleanup?.();
   }
 
   function subscribe(callback) {
@@ -151,6 +162,10 @@ export default function droppable(options) {
   }
 
   function publish(newState = state) {
+    /* Avoid notifying subscribers again when an options update changes no state. */
+    const keys = new Set([...Object.keys(state), ...Object.keys(newState)]);
+    if ([...keys].every((key) => Object.is(state[key], newState[key]))) return;
+
     state = newState;
     toggleAttributes();
     subscribers.forEach((sub) => sub(state));
@@ -199,214 +214,241 @@ export default function droppable(options) {
   }
 
   function createHandler(type) {
-    const {
-      attributesPrefix = getConfig().attributesPrefix,
-      data: dropData,
-      disabled,
-      namespace,
-      unless,
-      when,
-    } = _options;
+    return function handler(session) {
+      /* A publication snapshot may still contain an obsolete subscription. */
+      if (dragListeners[type] !== handler) return;
 
-    if (disabled) return;
+      if (activeDrag?.session === session) {
+        activeDrag.refresh();
+        return;
+      }
 
-    const _unless = dipatchByType(unless, type);
-    const _when = dipatchByType(when, type);
+      activeDrag?.cleanup();
+      createActiveDrag(type, session);
+    };
+  }
 
-    return function handler({ data: draggedData, onDrop: draggedOnDrop }) {
-      const baseArgs = {
-        dragged: draggedData,
-        drop: dropData,
+  function createActiveDrag(type, session) {
+    const { data: draggedData, onDrop: draggedOnDrop } = session;
+    let baseArgs;
+    let target;
+    let concerned;
+    let handlersSet = false;
+    let dragoverEl;
+    let lastPositionning = {};
+    let cleanupHandlers;
+    let cleaned = false;
+
+    const participation = { type, session, refresh, cleanup };
+    activeDrag = participation;
+    registerDragCleanup(cleanup);
+    refresh();
+
+    function cleanup() {
+      if (cleaned) return;
+      cleaned = true;
+      if (activeDrag === participation) activeDrag = undefined;
+      cleanupHandlers?.();
+      resetState();
+    }
+
+    function refresh() {
+      const options = _options;
+      const {
+        attributesPrefix = getConfig().attributesPrefix,
+        data: drop,
         namespace,
-        type,
-      };
-
-      /* Evaluate acceptance once for this drag, before installing DOM handlers. */
-      const concerned = !!(
-        (!_when || _when(draggedData, baseArgs)) &&
-        (!_unless || !_unless(draggedData, baseArgs))
+        when,
+        unless,
+      } = options;
+      const nextArgs = { dragged: draggedData, drop, namespace, type };
+      const nextWhen = dipatchByType(when, type);
+      const nextUnless = dipatchByType(unless, type);
+      const nextConcerned = !!(
+        (!nextWhen || nextWhen(draggedData, nextArgs)) &&
+        (!nextUnless || !nextUnless(draggedData, nextArgs))
       );
 
-      const target = getTarget();
+      /* Predicates may synchronously update or detach this controller. */
+      if (activeDrag !== participation || _options !== options) return;
 
-      let handlersSet = false; /* Are handlers set on the element? */
-      let dragoverEl = undefined; /* Element being dragged over */
-      let lastPositionning =
-        {}; /* Last positionning of dragged element over drop */
+      const nextTarget = getTarget();
+      const preserveHover = concerned && nextConcerned && target === nextTarget;
+      const replaceHandlers =
+        target !== nextTarget || concerned !== nextConcerned;
 
-      let cleaned = false;
-      let cleanupHandlers;
-
-      function cleanup() {
-        if (cleaned) return;
-        cleaned = true;
-        if (activeDragCleanup === cleanup) activeDragCleanup = undefined;
-        cleanupHandlers();
-        resetState();
+      if (replaceHandlers) cleanupHandlers?.();
+      if (state.attributesPrefix !== attributesPrefix) {
+        toggleAttributes({ forceRemove: true });
       }
 
-      /* Install and retain cleanup before notifying subscribers: a subscriber
-       * may immediately disable or detach this target. */
-      activeDragCleanup?.();
-      activeDragCleanup = cleanup;
-      if (concerned) {
-        setHandlers();
-        cleanupHandlers = unsetHandlers;
-      } else {
-        cleanupHandlers = handleUnconcerned();
-      }
+      baseArgs = nextArgs;
+      target = nextTarget;
+      concerned = nextConcerned;
 
-      registerDragCleanup(cleanup);
+      if (replaceHandlers) {
+        dragoverEl = undefined;
+        lastPositionning = {};
+        if (concerned) {
+          setHandlers();
+          cleanupHandlers = unsetHandlers;
+        } else {
+          cleanupHandlers = handleUnconcerned();
+        }
+      }
 
       publish({
+        ...(preserveHover ? state : { canDrop: false }),
         ...baseArgs,
         attributesPrefix,
-        canDrop: false,
         concerned,
         dragging: true,
-        unconcerned: concerned === false,
+        unconcerned: !concerned,
       });
+    }
 
-      function handleUnconcerned() {
-        const prevCursor = target?.style?.cursor || "";
+    function handleUnconcerned() {
+      const prevCursor = target?.style?.cursor || "";
 
-        target.style.cursor = "not-allowed";
+      target.style.cursor = "not-allowed";
 
-        function blockEvent(e) {
-          e.dataTransfer.dropEffect = "none";
-          e.preventDefault();
-          e.stopPropagation();
-        }
+      function blockEvent(e) {
+        e.dataTransfer.dropEffect = "none";
+        e.preventDefault();
+        e.stopPropagation();
+      }
 
+      EVENT_TYPES_TO_BLOCK.forEach((eventType) =>
+        target.addEventListener(eventType, blockEvent),
+      );
+
+      return () => {
         EVENT_TYPES_TO_BLOCK.forEach((eventType) =>
-          target.addEventListener(eventType, blockEvent),
+          target.removeEventListener(eventType, blockEvent),
         );
+        target.style.cursor = prevCursor;
+      };
+    }
 
-        return () => {
-          EVENT_TYPES_TO_BLOCK.forEach((eventType) =>
-            target.removeEventListener(eventType, blockEvent),
-          );
-          target.style.cursor = prevCursor;
+    function resetState() {
+      toggleAttributes({ forceRemove: true });
+      publish({});
+    }
+
+    function setDragoverEl(overEl, positionning) {
+      /* Prevent processing if nothing significant changed */
+      if (!positionningChanged(positionning) && dragoverEl === overEl) return;
+
+      lastPositionning = positionning;
+      dragoverEl = overEl;
+
+      publish({ ...state, canDrop: true, ...positionning });
+    }
+
+    function unsetDragoverEl() {
+      dragoverEl = null;
+      lastPositionning = {};
+      const {
+        x,
+        y,
+        dx,
+        dy,
+        left,
+        right,
+        top,
+        bottom,
+        ...stateWithoutPositionning
+      } = state;
+
+      publish({
+        ...stateWithoutPositionning,
+        canDrop: null,
+      });
+    }
+
+    function computePositionning(e) {
+      const rect = getClientRect(target);
+      if (!rect) return {};
+
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const dx = rect.width > 0 ? x / rect.width : 0;
+      const dy = rect.height > 0 ? y / rect.height : 0;
+
+      return {
+        x,
+        y,
+        dx,
+        dy,
+        left: dx < 0.5,
+        right: dx >= 0.5,
+        top: dy < 0.5,
+        bottom: dy >= 0.5,
+      };
+    }
+
+    function positionningChanged(positionning) {
+      return ["x", "y", "dx", "dy"].some(
+        (k) => positionning?.[k] !== lastPositionning?.[k],
+      );
+    }
+
+    function dragover(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      setDragoverEl(e.target, computePositionning(e));
+    }
+
+    function dragleave(e) {
+      if (e.target !== dragoverEl) return;
+      unsetDragoverEl();
+    }
+
+    function drop(e) {
+      if (e.target !== dragoverEl) return;
+
+      const onDrop = dipatchByType(_options.onDrop, type);
+      const dropTarget = target;
+
+      if (onDrop || draggedOnDrop) {
+        const args = {
+          ...baseArgs,
+          ...computePositionning(e),
         };
-      }
 
-      function resetState() {
-        toggleAttributes({ forceRemove: true });
-        publish({});
-      }
-
-      function setDragoverEl(overEl, positionning) {
-        /* Prevent processing if nothing significant changed */
-        if (!positionningChanged(positionning) && dragoverEl === overEl) return;
-
-        lastPositionning = positionning;
-        dragoverEl = overEl;
-
-        publish({ ...state, canDrop: true, ...positionning });
-      }
-
-      function unsetDragoverEl() {
-        dragoverEl = null;
-        lastPositionning = {};
-        const {
-          x,
-          y,
-          dx,
-          dy,
-          left,
-          right,
-          top,
-          bottom,
-          ...stateWithoutPositionning
-        } = state;
-
-        publish({
-          ...stateWithoutPositionning,
-          canDrop: null,
-        });
-      }
-
-      function computePositionning(e) {
-        const rect = getClientRect(target);
-        if (!rect) return {};
-
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        const dx = rect.width > 0 ? x / rect.width : 0;
-        const dy = rect.height > 0 ? y / rect.height : 0;
-
-        return {
-          x,
-          y,
-          dx,
-          dy,
-          left: dx < 0.5,
-          right: dx >= 0.5,
-          top: dy < 0.5,
-          bottom: dy >= 0.5,
-        };
-      }
-
-      function positionningChanged(positionning) {
-        return ["x", "y", "dx", "dy"].some(
-          (k) => positionning?.[k] !== lastPositionning?.[k],
-        );
-      }
-
-      function dragover(e) {
         e.stopPropagation();
         e.preventDefault();
-        setDragoverEl(e.target, computePositionning(e));
+        onDrop?.(args);
+        draggedOnDrop?.(args);
       }
 
-      function dragleave(e) {
-        if (e.target !== dragoverEl) return;
+      if (activeDrag === participation && target === dropTarget && concerned) {
         unsetDragoverEl();
       }
+    }
 
-      function drop(e) {
-        if (e.target !== dragoverEl) return;
+    function setHandlers() {
+      if (handlersSet) return;
 
-        const onDrop = dipatchByType(_options.onDrop, type);
+      target.addEventListener("dragenter", dragover);
+      target.addEventListener("dragover", dragover);
+      target.addEventListener("dragleave", dragleave);
+      target.addEventListener("drop", drop);
 
-        if (onDrop || draggedOnDrop) {
-          const args = {
-            ...baseArgs,
-            ...computePositionning(e),
-          };
+      handlersSet = true;
+    }
 
-          e.stopPropagation();
-          e.preventDefault();
-          onDrop?.(args);
-          draggedOnDrop?.(args);
-        }
+    function unsetHandlers() {
+      if (!handlersSet) return;
 
-        unsetDragoverEl();
-      }
-
-      function setHandlers() {
-        if (handlersSet) return;
-
-        target.addEventListener("dragenter", dragover);
-        target.addEventListener("dragover", dragover);
-        target.addEventListener("dragleave", dragleave);
-        target.addEventListener("drop", drop);
-
-        handlersSet = true;
-      }
-
-      function unsetHandlers() {
-        if (!handlersSet) return;
-
-        target.removeEventListener("dragenter", dragover);
-        target.removeEventListener("dragover", dragover);
-        target.removeEventListener("dragleave", dragleave);
-        target.removeEventListener("drop", drop);
-        dragoverEl = undefined;
-        handlersSet = false;
-      }
-    };
+      target.removeEventListener("dragenter", dragover);
+      target.removeEventListener("dragover", dragover);
+      target.removeEventListener("dragleave", dragleave);
+      target.removeEventListener("drop", drop);
+      dragoverEl = undefined;
+      handlersSet = false;
+    }
   }
 
   setOptions(options);
@@ -427,6 +469,7 @@ export default function droppable(options) {
       destroyed = true;
       toggleAttributes({ forceRemove: true });
       unregister();
+      activeDrag?.cleanup();
       unsubscribeAll();
       el = undefined;
       publish({});
@@ -457,6 +500,7 @@ export default function droppable(options) {
       if (destroyed) return;
       toggleAttributes({ forceRemove: true });
       unregister();
+      activeDrag?.cleanup();
       el = undefined;
       publish({});
     },
