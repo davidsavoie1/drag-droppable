@@ -528,6 +528,9 @@ import { configureDnD } from "drag-droppable";
 configureDnD({
   touch: {
     /* Default values */
+    autoScroll: true, // Scroll near the edges during touch drags.
+    scrollSensitivity: 40, // Edge activation zone, in pixels.
+    scrollSpeed: 1000, // Maximum scroll speed, in pixels per second.
     dragImageOpacity: 0.5, // Opacity of the image created to follow the touch.
     moveThreshold: 5, // Minimum movement in pixels to consider a drag valid.
     pressHold: 300, // Number of milliseconds to statically hold before initiating drag.
@@ -556,6 +559,21 @@ Setting `touch` to `null` in the global configuration will by default disable to
 
 Setting `touch` to `true` or `undefined` in the global configuration will reset the default values altogether.
 
+### Automatic scrolling
+
+During a touch drag, holding the finger near the edge of a scrollable container or the viewport scrolls the content automatically. Scrolling becomes faster closer to the edge and continues even when the finger stays still. The nearest scrollable ancestor takes priority on each axis; an ancestor can take over when it reaches its limit.
+
+Use `scrollSensitivity` to change the edge zone and `scrollSpeed` to change the maximum speed. Set `autoScroll: false` to disable it globally under `touch`, or locally on a draggable:
+
+```js
+dndDrag(foodEl, {
+  type: "food",
+  touch: { autoScroll: false },
+});
+```
+
+The target under the finger stays updated while the content scrolls. Scrolling stops when the finger leaves the edge zone or the drag ends or is cancelled. These options apply to the synthetic touch engine; mouse dragging keeps the browser's native scrolling behavior.
+
 ### Local touch override
 
 Touch behaviour can be configured on each individual draggable configuration with the `touch` prop. The same properties can be defined. They will get merged with the globally configured properties while considering additional rules defined above.
@@ -581,7 +599,6 @@ Svelte automatically unsubscribes from stores referenced with `$store`. Once the
 ## Limitations
 
 - Keyboard interactions are not supported for the moment.
-- Scroll during drag is also not optimized.
 
 ## Usage in Svelte (optional)
 

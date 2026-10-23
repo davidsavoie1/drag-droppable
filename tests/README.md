@@ -56,6 +56,7 @@ the expected result to make the failure disappear.
 - `controllers.test.js`: lifecycle, actions, callbacks, attributes, drops, and snapshot stability.
 - `dynamic.test.js`: targets joining an active drag, configuration updates, and hover positions.
 - `touch.test.js`: touch inheritance, press-and-hold, movement, and cancellation.
+- `autoScroll.test.js`: edge scrolling, nested containers, stationary-touch targets, and cancellation.
 - `react.test.js`: real React DOM rendering in jsdom, Strict Mode, refs, updates, and subscription opt-out.
 - `react-server.test.js`: server rendering without DOM globals.
 - `vue.test.js`: Vue mounting, reactive configuration, template refs, subscriptions, and cleanup.

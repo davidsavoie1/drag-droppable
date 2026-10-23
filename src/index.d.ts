@@ -1,4 +1,10 @@
 export interface TouchOptions {
+  /** Enable edge scrolling during synthetic touch drags. Default true. */
+  autoScroll?: boolean;
+  /** Edge activation zone in pixels. Default 40. */
+  scrollSensitivity?: number;
+  /** Maximum scrolling speed in pixels per second. Default 1000. */
+  scrollSpeed?: number;
   dragImageOpacity?: number;
   moveThreshold?: number;
   pressHold?: number;

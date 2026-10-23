@@ -1,5 +1,5 @@
 <script module>
-  import Example from "./Example3.svelte";
+  import Example from "./Example5.svelte";
 </script>
 
 <script>

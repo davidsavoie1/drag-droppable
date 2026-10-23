@@ -1,6 +1,9 @@
 import { cloneWhenObject, isObject } from "./functions.js";
 
 export const DEFAULT_TOUCH_OPTIONS = {
+  autoScroll: true,
+  scrollSensitivity: 40,
+  scrollSpeed: 1000,
   dragImageOpacity: 0.5,
   moveThreshold: 5,
   pressHold: 300,

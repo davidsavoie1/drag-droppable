@@ -13,6 +13,12 @@ export class TestElement extends EventTarget {
   };
   children = [];
   parentElement = null;
+  clientWidth = 100;
+  clientHeight = 100;
+  scrollWidth = 100;
+  scrollHeight = 100;
+  scrollLeft = 0;
+  scrollTop = 0;
   rect = { left: 0, top: 0, width: 100, height: 100 };
 
   setAttribute(key, value) {
@@ -30,6 +36,16 @@ export class TestElement extends EventTarget {
   }
   get draggable() {
     return this.attributes.get("draggable") === "true";
+  }
+  scrollBy({ left = 0, top = 0 }) {
+    this.scrollLeft = Math.max(
+      0,
+      Math.min(this.scrollWidth - this.clientWidth, this.scrollLeft + left),
+    );
+    this.scrollTop = Math.max(
+      0,
+      Math.min(this.scrollHeight - this.clientHeight, this.scrollTop + top),
+    );
   }
   getBoundingClientRect() {
     return this.rect;
@@ -55,6 +71,13 @@ export class TestElement extends EventTarget {
 class TestDocument extends EventTarget {
   ontouchstart = null;
   body = new TestElement();
+  documentElement = Object.assign(new TestElement(), {
+    clientWidth: 400,
+    clientHeight: 600,
+    scrollWidth: 400,
+    scrollHeight: 600,
+  });
+  scrollingElement = this.documentElement;
   hitTarget = null;
   elementFromPoint() {
     return this.hitTarget;
@@ -71,8 +94,24 @@ export const document = new TestDocument();
 globalThis.Element = TestElement;
 globalThis.HTMLCanvasElement = class extends TestElement {};
 globalThis.document = document;
-globalThis.window = { setTimeout: (...args) => globalThis.setTimeout(...args) };
-globalThis.getComputedStyle = () => ({ length: 0, pointerEvents: "auto" });
+globalThis.window = {
+  setTimeout: (...args) => globalThis.setTimeout(...args),
+  innerWidth: 400,
+  innerHeight: 600,
+  get scrollX() {
+    return document.scrollingElement.scrollLeft;
+  },
+  get scrollY() {
+    return document.scrollingElement.scrollTop;
+  },
+};
+document.defaultView = globalThis.window;
+globalThis.getComputedStyle = (element) => ({
+  length: 0,
+  pointerEvents: "auto",
+  overflowX: element.style.overflowX || element.style.overflow || "visible",
+  overflowY: element.style.overflowY || element.style.overflow || "visible",
+});
 
 let frameId = 0;
 const frames = new Map();
@@ -82,10 +121,12 @@ globalThis.requestAnimationFrame = (callback) => {
 };
 globalThis.cancelAnimationFrame = (id) => frames.delete(id);
 
-export function flushFrames() {
+let frameTime = 0;
+export function flushFrames(elapsed = 16) {
+  frameTime += elapsed;
   const pending = [...frames.values()];
   frames.clear();
-  pending.forEach((callback) => callback());
+  pending.forEach((callback) => callback(frameTime));
 }
 
 export function send(element, type, { origin, ...properties } = {}) {
@@ -101,14 +142,14 @@ export function send(element, type, { origin, ...properties } = {}) {
   return event;
 }
 
-export function touch(source, type = "touchstart", count = 1, x = 25) {
+export function touch(source, type = "touchstart", count = 1, x = 25, y = 25) {
   return send(document, type, {
     origin: source,
     touches: Array.from({ length: count }, () => ({
       clientX: x,
-      clientY: 25,
-      pageX: x,
-      pageY: 25,
+      clientY: y,
+      pageX: x + document.scrollingElement.scrollLeft,
+      pageY: y + document.scrollingElement.scrollTop,
     })),
   });
 }

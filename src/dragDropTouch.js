@@ -1,3 +1,4 @@
+import startAutoScroll from "./autoScroll.js";
 import { DEFAULT_TOUCH_OPTIONS, getTouchConfig } from "./configure.js";
 import {
   cloneWhenObject,
@@ -28,6 +29,7 @@ const DEFAULT_STATE = {
   pressHoldTimer: null,
   sessionOptions: null,
   startPoint: null,
+  stopAutoScroll: null,
 };
 
 const REMOVED_ATTRIBUTES = ["id", "class", "style", "draggable"];
@@ -177,20 +179,34 @@ function startDrag(e) {
   state.dragging = true;
   vibrate();
   handleDragover(e);
+  if (state !== session) return;
+  state.stopAutoScroll = startAutoScroll(
+    rootDocument,
+    () => getPoint(session.lastTouchEvent),
+    session.sessionOptions,
+    () => {
+      if (state !== session) return;
+      positionDragImage(session.lastTouchEvent);
+      handleDragover(session.lastTouchEvent);
+    },
+  );
 }
 
 function handleDragover(e) {
+  const session = state;
   const target = getTarget(e);
 
   if (target !== state.lastTarget) {
     dispatchSyntheticEvent(state.lastTouchEvent, "dragleave", state.lastTarget);
+    if (state !== session) return;
     dispatchSyntheticEvent(e, "dragenter", target);
+    if (state !== session) return;
     state.lastTarget = target;
   }
 
   const dragoverEvent = dispatchSyntheticEvent(e, "dragover", target);
 
-  state.isDropZone = !!dragoverEvent?.defaultPrevented;
+  if (state === session) state.isDropZone = !!dragoverEvent?.defaultPrevented;
 }
 
 /* touchmove either keeps behaving like a normal touch interaction or
@@ -348,6 +364,7 @@ function reset(reason) {
   if (LOG && reason) console.log(reason);
 
   clearTimeout(state.pressHoldTimer);
+  state.stopAutoScroll?.();
   destroyDragImage();
   restoreUserSelect?.();
   restoreUserSelect = null;
@@ -385,12 +402,9 @@ function disableUserSelect(el) {
   };
 }
 
-function getPoint(e, usePageCoords = false) {
+function getPoint(e) {
   const touch = e?.touches?.[0] || e;
-  return {
-    x: usePageCoords ? touch?.pageX : touch?.clientX,
-    y: usePageCoords ? touch?.pageY : touch?.clientY,
-  };
+  return { x: touch?.clientX, y: touch?.clientY };
 }
 
 function getDelta(e) {
@@ -454,17 +468,22 @@ function destroyDragImage() {
 
 /* Keep the synthetic drag image visually aligned with the pointer. */
 function moveDragImage(e) {
+  const session = state;
   requestAnimationFrame(() => {
-    if (!state.dragImage) return;
-
-    const point = getPoint(e, true);
-    const style = state.dragImage.style;
-    style.position = "absolute";
-    style.pointerEvents = "none";
-    style.zIndex = "999999";
-    style.left = `${Math.round(point.x - state.dragImageOffset.x)}px`;
-    style.top = `${Math.round(point.y - state.dragImageOffset.y)}px`;
+    if (state === session) positionDragImage(e);
   });
+}
+
+function positionDragImage(e) {
+  if (!state.dragImage) return;
+  const point = getPoint(e);
+  const style = state.dragImage.style;
+  /* A viewport overlay follows the finger without growing the page's scroll area. */
+  style.position = "fixed";
+  style.pointerEvents = "none";
+  style.zIndex = "999999";
+  style.left = `${Math.round(point.x - state.dragImageOffset.x)}px`;
+  style.top = `${Math.round(point.y - state.dragImageOffset.y)}px`;
 }
 
 function vibrate() {
