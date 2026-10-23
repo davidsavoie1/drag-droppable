@@ -206,12 +206,10 @@ export default function droppable(options) {
       namespace,
       unless,
       when,
-      onDrop,
     } = _options;
 
     if (disabled) return;
 
-    const _onDrop = dipatchByType(onDrop, type);
     const _unless = dipatchByType(unless, type);
     const _when = dipatchByType(when, type);
 
@@ -368,17 +366,22 @@ export default function droppable(options) {
       }
 
       function drop(e) {
-        e.stopPropagation();
         if (e.target !== dragoverEl) return;
 
-        const args = {
-          ...baseArgs,
-          ...computePositionning(e),
-        };
+        const onDrop = dipatchByType(_options.onDrop, type);
 
-        e.preventDefault();
-        _onDrop?.(args);
-        draggedOnDrop?.(args);
+        if (onDrop || draggedOnDrop) {
+          const args = {
+            ...baseArgs,
+            ...computePositionning(e),
+          };
+
+          e.stopPropagation();
+          e.preventDefault();
+          onDrop?.(args);
+          draggedOnDrop?.(args);
+        }
+
         unsetDragoverEl();
       }
 
@@ -388,11 +391,7 @@ export default function droppable(options) {
         target.addEventListener("dragenter", dragover);
         target.addEventListener("dragover", dragover);
         target.addEventListener("dragleave", dragleave);
-
-        /* Set drop handler only if an effect might occur. */
-        if (_onDrop || draggedOnDrop) {
-          target.addEventListener("drop", drop);
-        }
+        target.addEventListener("drop", drop);
 
         handlersSet = true;
       }
