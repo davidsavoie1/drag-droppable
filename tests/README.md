@@ -17,9 +17,8 @@ npm run test:watch
 ```
 
 The second command keeps running and reruns the tests when files change. Press
-Ctrl+C to stop it. The test runner and assertions are built into Node. React integration tests also
-use React DOM and jsdom, installed as development dependencies; no external service
-is required. Depending on your Node version, the
+Ctrl+C to stop it. The test runner and assertions are built into Node. React and Vue integration tests also use their DOM renderers and jsdom, installed
+as development dependencies; no external service is required. Depending on your Node version, the
 mock timers used by touch tests may display an experimental warning. They advance
 time without actually waiting for the 300 ms hold delay.
 
@@ -59,6 +58,8 @@ the expected result to make the failure disappear.
 - `touch.test.js`: touch inheritance, press-and-hold, movement, and cancellation.
 - `react.test.js`: real React DOM rendering in jsdom, Strict Mode, refs, updates, and subscription opt-out.
 - `react-server.test.js`: server rendering without DOM globals.
+- `vue.test.js`: Vue mounting, reactive configuration, template refs, subscriptions, and cleanup.
+- `vue-server.test.js`: Vue server rendering without DOM globals.
 - `helpers/dom.js`: a small DOM substitute shared by the core scenarios.
 
 Each test cleans up its controllers and ends any directly published drag sessions.

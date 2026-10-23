@@ -8,19 +8,17 @@ Attach data to draggable and droppable elements and use it to handle the drops. 
 
 **You decide how to handle drops**... with a lot of information to do so! No HTML mutation will actually move anything around permanently, preventing inconsistencies with the actual state of your app (it would, it always does).
 
-**You choose your favorite framework**. Although the library has been developped with Svelte in mind, it will work fine in React, Vite and even plain old Javascript. Optional React hooks are even provided!
+**You choose your favorite framework**. Although the library has been developped with Svelte in mind, it will work fine in React, Vue and even plain old Javascript. Optional React hooks and Vue composables are even provided!
 
 **You can use it with touch support out of the box** without any adapter or workaround... and you can configure it as you like.
 
-The core has no dependencies, only a few kB of modern Javascript. Optional React hooks use your application's React installation.
+The core has no dependencies, only a few kB of modern Javascript. Optional React hooks and Vue composables use your application's framework installation.
 
 ## Table of contents
 
 - [Table of contents](#table-of-contents)
 - [Typical usage](#typical-usage)
 - [Using `onDrop`](#using-ondrop)
-- [Usage in Svelte (optional)](#usage-in-svelte-optional)
-- [Usage in React (optional)](#usage-in-react-optional)
 - [Draggable](#draggable)
 - [Droppable](#droppable)
 - [Stores](#stores)
@@ -29,6 +27,9 @@ The core has no dependencies, only a few kB of modern Javascript. Optional React
 - [Touch](#touch)
 - [Lifecycle](#lifecycle)
 - [Limitations](#limitations)
+- [Usage in Svelte (optional)](#usage-in-svelte-optional)
+- [Usage in React (optional)](#usage-in-react-optional)
+- [Usage in Vue (optional)](#usage-in-vue-optional)
 - [Examples](#examples)
 - [TypeScript](#typescript)
 
@@ -113,87 +114,6 @@ onDrop(
   }) => {},
 );
 ```
-
-## Usage in Svelte (optional)
-
-Although the library is framework-independant, it has been developed by a Svelte programmer.
-
-Instead of getting a reference to an HTML element to pass as argument, elements can be targeted with the `use:` directive.
-
-```svelte
-<div use:dndDrag={{ type: "toy", data: { color: "red" } }}>Red Truck Toy</div>
-```
-
-The `draggable` and `droppable` stores conform to the [Svelte store contract](https://svelte.dev/docs/svelte/stores#Store-contract) and can be subscribed to with `$myDragStore` in Svelte.
-
-```svelte
-<script>
-  import { dndDrop, droppable } from "drag-droppable";
-
-  const dropStore = droppable({ type: "food" });
-
-  const { canDrop, concerned } = $derived($dropStore);
-</script>
-
-<div class:dropzone={concerned} class:drop={canDrop} use:dndDrop={dropStore}>
-  Baby Mouth
-</div>
-```
-
-## Usage in React (optional)
-
-React 18 and 19 applications can import hooks from `drag-droppable/react`. React is an optional peer dependency; using the core entry point does not require it.
-
-Each hook returns `{ ref, state, controller }`. Attach `ref` to one HTML element. The hook manages binding, cleanup, configuration updates, and state subscriptions.
-
-```jsx
-import { useState } from "react";
-import { useDraggable, useDroppable } from "drag-droppable/react";
-
-export default function Dinner() {
-  const [hunger, setHunger] = useState(6);
-  const [spoonfuls, setSpoonfuls] = useState(4);
-
-  const { ref: mealRef } = useDraggable({
-    type: "food",
-    data: { quality: 2 },
-    disabled: spoonfuls <= 0,
-  });
-
-  const { ref: babyRef, state } = useDroppable({
-    type: "food",
-    data: { hunger },
-    when: (_, { drop }) => drop.hunger > 0,
-    onDrop: ({ dragged: meal }) => {
-      setHunger((current) => Math.max(0, current - meal.quality));
-      setSpoonfuls((current) => current - 1);
-    },
-  });
-
-  return (
-    <>
-      <div ref={mealRef}>Dinner: {spoonfuls} spoonfuls left</div>
-      <div ref={babyRef} className={state.canDrop ? "open-wide" : ""}>
-        Mia: {hunger > 0 ? `Hunger: ${hunger}` : "Finally full."}
-      </div>
-    </>
-  );
-}
-```
-
-`state` exposes the same fields as the corresponding store and is read-only. It updates automatically; no manual `useSyncExternalStore` call is needed. React application data should be updated with React state setters, as above. Inline options, callbacks, and data objects are supported. The droppable hook reads its `state.drop` from the current options rather than subscribing to changes in the data it already receives from React.
-
-By default, position changes can trigger renders. When CSS data attributes are enough, opt out of the subscription:
-
-```jsx
-const { ref } = useDroppable(options, { subscribe: false });
-```
-
-In this mode, `state` stays at its initial idle value, while drag-and-drop callbacks and data attributes still work. The setting can be changed at runtime.
-
-Pass configuration through the hook options; `el` is replaced by `ref`. The returned `controller` provides access to `getSnapshot()` or manual subscriptions when needed. Do not destroy or bind it independently: the hook owns its DOM lifecycle. On detachment or unmount, the controller is unbound so it can survive Strict Mode's additional setup/cleanup cycle. Once unreferenced, it can be garbage-collected.
-
-Server rendering uses an idle snapshot; DOM binding happens on the client. Hooks use the same generic convention as controllers: local data first, partner data second, for example `useDroppable<Baby, Food>(options)`.
 
 ## Draggable
 
@@ -610,6 +530,142 @@ Svelte automatically unsubscribes from stores referenced with `$store`. Once the
 
 - Keyboard interactions are not supported for the moment.
 - Scroll during drag is also not optimized.
+
+## Usage in Svelte (optional)
+
+Although the library is framework-independant, it has been developed by a Svelte programmer.
+
+Instead of getting a reference to an HTML element to pass as argument, elements can be targeted with the `use:` directive.
+
+```svelte
+<div use:dndDrag={{ type: "toy", data: { color: "red" } }}>Red Truck Toy</div>
+```
+
+The `draggable` and `droppable` stores conform to the [Svelte store contract](https://svelte.dev/docs/svelte/stores#Store-contract) and can be subscribed to with `$myDragStore` in Svelte.
+
+```svelte
+<script>
+  import { dndDrop, droppable } from "drag-droppable";
+
+  const dropStore = droppable({ type: "food" });
+
+  const { canDrop, concerned } = $derived($dropStore);
+</script>
+
+<div class:dropzone={concerned} class:drop={canDrop} use:dndDrop={dropStore}>
+  Baby Mouth
+</div>
+```
+
+## Usage in React (optional)
+
+React 18 and 19 applications can import hooks from `drag-droppable/react`. React is an optional peer dependency; using the core entry point does not require it.
+
+Each hook returns `{ ref, state, controller }`. Attach `ref` to one HTML element. The hook manages binding, cleanup, configuration updates, and state subscriptions.
+
+```jsx
+import { useState } from "react";
+import { useDraggable, useDroppable } from "drag-droppable/react";
+
+export default function Dinner() {
+  const [hunger, setHunger] = useState(6);
+  const [spoonfuls, setSpoonfuls] = useState(4);
+
+  const { ref: mealRef } = useDraggable({
+    type: "food",
+    data: { quality: 2 },
+    disabled: spoonfuls <= 0,
+  });
+
+  const { ref: babyRef, state } = useDroppable({
+    type: "food",
+    data: { hunger },
+    when: (_, { drop }) => drop.hunger > 0,
+    onDrop: ({ dragged: meal }) => {
+      setHunger((current) => Math.max(0, current - meal.quality));
+      setSpoonfuls((current) => current - 1);
+    },
+  });
+
+  return (
+    <>
+      <div ref={mealRef}>Dinner: {spoonfuls} spoonfuls left</div>
+      <div ref={babyRef} className={state.canDrop ? "open-wide" : ""}>
+        Mia: {hunger > 0 ? `Hunger: ${hunger}` : "Finally full."}
+      </div>
+    </>
+  );
+}
+```
+
+`state` exposes the same fields as the corresponding store and is read-only. It updates automatically; no manual `useSyncExternalStore` call is needed. React application data should be updated with React state setters, as above. Inline options, callbacks, and data objects are supported. The droppable hook reads its `state.drop` from the current options rather than subscribing to changes in the data it already receives from React.
+
+By default, position changes can trigger renders. When CSS data attributes are enough, opt out of the subscription:
+
+```jsx
+const { ref } = useDroppable(options, { subscribe: false });
+```
+
+In this mode, `state` stays at its initial idle value, while drag-and-drop callbacks and data attributes still work. The setting can be changed at runtime.
+
+Pass configuration through the hook options; `el` is replaced by `ref`. The returned `controller` provides access to `getSnapshot()` or manual subscriptions when needed. Do not destroy or bind it independently: the hook owns its DOM lifecycle. On detachment or unmount, the controller is unbound so it can survive Strict Mode's additional setup/cleanup cycle. Once unreferenced, it can be garbage-collected.
+
+Server rendering uses an idle snapshot; DOM binding happens on the client. Hooks use the same generic convention as controllers: local data first, partner data second, for example `useDroppable<Baby, Food>(options)`.
+
+## Usage in Vue (optional)
+
+Vue 3.3+ applications can import composables from `drag-droppable/vue`. Vue is an optional peer dependency; the core entry point does not import it.
+
+Call `useDraggable` and `useDroppable` in component setup. Each returns `{ ref, state, controller }`: a template ref, a shallow read-only state ref, and the underlying controller.
+
+```vue
+<script setup>
+import { ref } from "vue";
+import { useDraggable, useDroppable } from "drag-droppable/vue";
+
+const hunger = ref(6);
+const spoonfuls = ref(4);
+
+const { ref: mealRef } = useDraggable(() => ({
+  type: "food",
+  data: { quality: 2 },
+  disabled: spoonfuls.value <= 0,
+}));
+
+const { ref: babyRef, state: dropState } = useDroppable(() => ({
+  type: "food",
+  data: { hunger: hunger.value },
+  when: (_, { drop }) => drop.hunger > 0,
+  onDrop: ({ dragged: food }) => {
+    hunger.value = Math.max(0, hunger.value - food.quality);
+    spoonfuls.value -= 1;
+  },
+}));
+</script>
+
+<template>
+  <div ref="mealRef">Dinner: {{ spoonfuls }} spoonfuls left</div>
+  <div ref="babyRef" :class="{ 'open-wide': dropState.canDrop }">
+    Mia: hunger {{ hunger }}
+  </div>
+</template>
+```
+
+Pass a getter for reactive configuration: values read by the getter are tracked and changes are forwarded to `update()`. A plain options object or a ref containing options is also accepted. Changes inside an arbitrary non-reactive object are not tracked; use reactive values in the getter for dynamic options.
+
+In scripts, read state with `dropState.value.canDrop`; Vue unwraps refs automatically in templates. The state ref does not deeply proxy or freeze the snapshot, so payloads retain their original references. Treat state fields as read-only and manage application data through Vue's reactivity.
+
+Use `{ subscribe: false }` when data attributes and callbacks are enough:
+
+```js
+const { ref: babyRef } = useDroppable(() => options, { subscribe: false });
+```
+
+Without a subscription, the state ref stays at its initial idle value. Settings may also be reactive or supplied through a ref or getter, allowing the subscription to be toggled.
+
+Binding follows the template ref, including conditional elements and replacements. The composable applies options and subscribes on mount, then stops its watchers, unsubscribes, and destroys its controller before unmount. Server rendering exposes idle state without binding elements. Configure through the composable options and use its template ref instead of `el`; do not bind or destroy the controller independently.
+
+Type parameters follow the same convention as the core and React APIs: local data first, partner data second, for example `useDroppable<Baby, Food>(() => options)`.
 
 ## Examples
 

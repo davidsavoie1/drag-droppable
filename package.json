@@ -16,6 +16,10 @@
     "./react": {
       "types": "./src/react.d.ts",
       "default": "./src/react.js"
+    },
+    "./vue": {
+      "types": "./src/vue.d.ts",
+      "default": "./src/vue.js"
     }
   },
   "keywords": [
@@ -23,7 +27,9 @@
     "drag-and-drop",
     "drag",
     "drop",
-    "svelte"
+    "svelte",
+    "react",
+    "vue"
   ],
   "author": "David Savoie",
   "license": "MIT",
@@ -41,7 +47,8 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "svelte": "^5.57.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vue": "^3.5.44"
   },
   "scripts": {
     "dev": "vite",
@@ -51,10 +58,14 @@
   },
   "types": "./src/index.d.ts",
   "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0"
+    "react": "^18.0.0 || ^19.0.0",
+    "vue": "^3.3.0"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   }
