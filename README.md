@@ -18,10 +18,10 @@ The core has no dependencies, only a few kB of modern Javascript. Optional React
 
 - [Table of contents](#table-of-contents)
 - [Typical usage](#typical-usage)
-- [Using `onDrop`](#using-ondrop)
-- [Draggable](#draggable)
-- [Droppable](#droppable)
-- [Draggable and droppable](#draggable-and-droppable)
+- [Data shape](#data-shape)
+- [Drag: `dndDrag`](#drag-dnddrag)
+- [Drop: `dndDrop`](#drop-dnddrop)
+- [Drag and drop: `dnd`](#drag-and-drop-dnd)
 - [Stores](#stores)
 - [Dynamic configuration](#dynamic-configuration)
 - [Global configuration](#global-configuration)
@@ -87,14 +87,9 @@ dndDrag(toyEl, {
 });
 ```
 
-## Using `onDrop`
+## Data shape
 
-An `onDrop` callback will be called when a drop successfully occurs, either from the perspective of:
-
-- the dragged then dropped element (draggable);
-- the element that received the dropped element (droppable).
-
-In both cases, the function receives the same arguments. With the combined `dnd` binding, `onDrop` belongs only to the target:
+The same data shape is used to allow (`when`), deny (`unless`) or react to a drop (`onDrop`):
 
 ```js
 onDrop(
@@ -117,7 +112,14 @@ onDrop(
 );
 ```
 
-## Draggable
+An `onDrop` callback will be called when a drop successfully occurs, either from the perspective of:
+
+- the dragged then dropped element (draggable);
+- the element that received the dropped element (droppable).
+
+In both cases, the function receives the same arguments. With the combined `dnd` binding, `onDrop` belongs only to the target.
+
+## Drag: `dndDrag`
 
 An element can be declared draggable with `dndDrag`.
 
@@ -161,7 +163,7 @@ const {
 
 ### Handling
 
-**`onChange(state)`**: Observe source state immediately and on changes, without creating a store. Receives `dragging`, `pointerType`, and the other source snapshot fields. See the [droppable callback lifecycle](#handling-1) below.
+**`onChange(state)`**: Observe source state like `dragging`, `pointerType`, and the other source snapshot fields. See the [droppable callback lifecycle](#handling-1) below.
 
 **`onDrag(data, type, namespace)`**: Function to execute when a drag is initiated.
 
@@ -189,7 +191,7 @@ const {
 
 **`update(configOrFunction)`**: Replace the draggable configuration, directly or through an updater function. See [Dynamic configuration](#dynamic-configuration).
 
-## Droppable
+## Drop: `dndDrop`
 
 An element can be declared as a potential dropzone with `dndDrop`.
 
@@ -236,21 +238,24 @@ const {
 
 **`onDrop({ ...onDropArgs })`**: Function to execute when dragged element is dropped. See [`onDrop`](#ondrop).
 
-**`onChange(state)`**: Available on all controllers and bindings. Receives the current snapshot immediately when the callback is added or replaced, then whenever that snapshot changes. Keeping the same callback reference does not trigger another initial notification. Omitting it from replacement options removes it. Unbinding or destroying a controller resets its state before removing the callback. `droppable` resets to an empty object; source and combined states have `dragging: false`. `dragDroppable` and `dnd` report the combined state, with `dragging` describing the source role. Treat snapshots as read-only.
+**`onChange(state)`**: Observe droppable state.
 
 For example, observe a target directly in Svelte:
 
 ```svelte
 <script>
   import { dndDrop } from "drag-droppable";
+
   let drop = $state({});
-  const onChange = (state) => { drop = state; };
 </script>
 
-<div use:dndDrop={{ type: "food", onChange }} class:highlight={drop.canDrop} />
+<div
+  use:dndDrop={{ type: "food", onChange: (state) => (drop = state) }}
+  class:highlight={drop.accepts}
+/>
 ```
 
-Keep the callback reference stable to avoid repeated initial notifications on options updates. React hooks and Vue composables also accept `onChange` in their options; it remains active with `{ subscribe: false }`, which only disables their framework state subscription.
+`onChange` receives the current snapshot immediately when first added or reintroduced after removal, then whenever the state changes. Replacing it with another function only changes the recipient of future notifications; it does not trigger an initial notification. Inline callbacks are supported without keeping their references stable. React hooks and Vue composables also accept `onChange` in their options; it remains active with `{ subscribe: false }`, which only disables their framework state subscription.
 
 **`unless({ drag, drop, type, namespace, ...position })`**: Predicate function that prevents drop when true.
 
@@ -259,7 +264,8 @@ Keep the callback reference stable to avoid repeated initial notifications on op
 Both receive one object containing `{ drag, drop, type, namespace, ...position }`. Position fields (`x`, `y`, `dx`, `dy`, `left`, `right`, `top`, `bottom`) are available during hover and drop when the target has a usable rectangle. For example:
 
 ```js
-when: ({ drag: food, drop: baby }) => baby.hunger > 0 && food.texture === "smooth";
+when: ({ drag: food, drop: baby }) =>
+  baby.hunger > 0 && food.texture === "smooth";
 ```
 
 For matching types and namespaces, predicates are evaluated at the start of the drag or when the droppable is registered or updated during a drag. During `dragenter`, `dragover`, and `drop`, only the hovered target is re-evaluated with the current position, even if it was initially refused. A drop must pass the predicates again before either drop callback runs. No polling is performed while the pointer is stationary.
@@ -307,7 +313,7 @@ dndDrop(babyMouthEl, {
 
 **`update(configOrFunction)`**: Replace the droppable configuration, directly or through an updater function. See [Dynamic configuration](#dynamic-configuration).
 
-## Draggable and droppable
+## Drag and drop: `dnd`
 
 Use `dnd(element, options)` when the same element is both a drag source and a drop target for the same namespace and type. It also works as a Svelte action:
 
@@ -381,7 +387,7 @@ dndDrop(dropHTMLElement, dropStore);
 
 dropStore.subscribe(
   ({
-    canDrop, // Is relevant dragged element over drop element?
+    accepts, // Is relevant dragged element over drop element?
     concerned, // Is relevant element being dragged?
     drag, // Dragged data.
     dragging, // Is a matching drag in progress?
@@ -396,7 +402,7 @@ dropStore.subscribe(
 );
 ```
 
-`dragDroppable` combines both states. **`dragging` always describes this element being dragged**, and `pointerType` comes from its source role. `concerned`, `unconcerned`, `canDrop`, `drag`, `drop`, `type`, and position fields describe its target role. Receiving a drag from another element does not set `dragging` to true; use the target fields to react to incoming drags.
+`dragDroppable` combines both states. **`dragging` always describes this element being dragged**, and `pointerType` comes from its source role. `concerned`, `unconcerned`, `accepts`, `drag`, `drop`, `type`, and position fields describe its target role. Receiving a drag from another element does not set `dragging` to true; use the target fields to react to incoming drags.
 
 ```js
 import { dnd, dragDroppable } from "drag-droppable";
@@ -404,7 +410,7 @@ import { dnd, dragDroppable } from "drag-droppable";
 const babyStore = dragDroppable({ type: "baby", data: { name: "Mia" } });
 const binding = dnd(babyEl, babyStore);
 
-const unsubscribe = babyStore.subscribe(({ dragging, canDrop }) => {
+const unsubscribe = babyStore.subscribe(({ accepts, dragging }) => {
   /* React to Mia being moved or receiving another baby. */
 });
 
@@ -533,7 +539,7 @@ The library doesn't include any styling, only data that can be used to apply sty
 - `data-dnd-droppable`: Present when element is active droppable with at least one type
 - `data-dnd-concerned`: Present when dragged element is relevant
 - `data-dnd-unconcerned`: Present when potentially relevant dragged element is rejected by `unless` or `when` predicates
-- `data-dnd-can`: Present when dragged element is relevant and is over droppable element
+- `data-dnd-accepts`: Present when dragged element is relevant and is over droppable element
 - `data-dnd-top` / `data-dnd-bottom`: Present during an accepted hover within the configured top/bottom zone.
 - `data-dnd-left` / `data-dnd-right`: Present during an accepted hover within the configured left/right zone.
 
@@ -553,7 +559,7 @@ Boolean attributes are either present or not. CSS can then easily target these a
 }
 
 /* Droppable element can accept drop */
-[data-dnd-droppable][data-dnd-can] {
+[data-dnd-droppable][data-dnd-accepts] {
   background-color: #67e8f9;
 }
 
@@ -675,10 +681,10 @@ The `draggable`, `droppable`, and `dragDroppable` stores conform to the [Svelte 
 
   const dropStore = droppable({ type: "food" });
 
-  const { canDrop, concerned } = $derived($dropStore);
+  const { accepts, concerned } = $derived($dropStore);
 </script>
 
-<div class:dropzone={concerned} class:drop={canDrop} use:dndDrop={dropStore}>
+<div class:dropzone={concerned} class:drop={accepts} use:dndDrop={dropStore}>
   Baby Mouth
 </div>
 ```
@@ -716,7 +722,7 @@ export default function Dinner() {
   return (
     <>
       <div ref={mealRef}>Dinner: {spoonfuls} spoonfuls left</div>
-      <div ref={babyRef} className={state.canDrop ? "open-wide" : ""}>
+      <div ref={babyRef} className={state.accepts ? "open-wide" : ""}>
         Mia: {hunger > 0 ? `Hunger: ${hunger}` : "Finally full."}
       </div>
     </>
@@ -771,7 +777,7 @@ const { ref: babyRef, state: dropState } = useDroppable(() => ({
 
 <template>
   <div ref="mealRef">Dinner: {{ spoonfuls }} spoonfuls left</div>
-  <div ref="babyRef" :class="{ 'open-wide': dropState.canDrop }">
+  <div ref="babyRef" :class="{ 'open-wide': dropState.accepts }">
     Mia: hunger {{ hunger }}
   </div>
 </template>
@@ -779,7 +785,7 @@ const { ref: babyRef, state: dropState } = useDroppable(() => ({
 
 Pass a getter for reactive configuration: values read by the getter are tracked and changes are forwarded to `update()`. A plain options object or a ref containing options is also accepted. Changes inside an arbitrary non-reactive object are not tracked; use reactive values in the getter for dynamic options.
 
-In scripts, read state with `dropState.value.canDrop`; Vue unwraps refs automatically in templates. The state ref does not deeply proxy or freeze the snapshot, so payloads retain their original references. Treat state fields as read-only and manage application data through Vue's reactivity.
+In scripts, read state with `dropState.value.accepts`; Vue unwraps refs automatically in templates. The state ref does not deeply proxy or freeze the snapshot, so payloads retain their original references. Treat state fields as read-only and manage application data through Vue's reactivity.
 
 Use `{ subscribe: false }` when data attributes and callbacks are enough:
 

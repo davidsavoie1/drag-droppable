@@ -36,7 +36,7 @@
   outline: dashed 2px #0e7490;
 }
 
-[data-dnd-droppable][data-dnd-can] {
+[data-dnd-droppable][data-dnd-accepts] {
   background-color: #67e8f9;
 }
 

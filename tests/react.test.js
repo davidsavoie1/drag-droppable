@@ -107,7 +107,7 @@ function pair(t, settings = {}, props = {}) {
       h(
         alternate ? "article" : "div",
         { ref: target.ref, "data-target": "" },
-        String(target.state.canDrop),
+        String(target.state.accepts),
       ),
     );
   }
@@ -135,15 +135,15 @@ test("hooks bind in Strict Mode, observe drag state and clean up on unmount", (t
   assert.equal(mounted.source.state.dragging, true);
   assert.equal(mounted.target.state.concerned, true);
   send(mounted.targetEl(), "dragover");
-  assert.equal(mounted.target.state.canDrop, true);
+  assert.equal(mounted.target.state.accepts, true);
   assert.equal(mounted.target.state.drop.hunger, 6);
   const element = mounted.targetEl();
   mounted.render({ alternate: true });
   assert.notEqual(element, mounted.targetEl());
   assert.equal(element.hasAttribute("data-dnd-droppable"), false);
-  assert.equal(mounted.target.state.canDrop, false);
+  assert.equal(mounted.target.state.accepts, false);
   send(mounted.targetEl(), "dragover");
-  assert.equal(mounted.target.state.canDrop, true);
+  assert.equal(mounted.target.state.accepts, true);
   send(mounted.sourceEl(), "dragend");
   assert.equal(mounted.source.state.dragging, false);
   assert.deepEqual(mounted.target.state, {});
@@ -162,7 +162,7 @@ test("inline data, arrays and callbacks do not loop or reset an accepted hover",
   });
   assert.equal(mounted.target.controller, controller);
   assert.equal(mounted.target.ref, ref);
-  assert.equal(mounted.target.state.canDrop, true);
+  assert.equal(mounted.target.state.accepts, true);
   assert.equal(mounted.target.state.y, 75);
   assert.equal(mounted.target.state.drop.hunger, 3);
   send(mounted.targetEl(), "drop", { clientY: 75 });
@@ -193,12 +193,12 @@ test("committed props refresh acceptance and disabled sources", (t) => {
   send(targetEl, "dragover");
   mounted.render({ hunger: 0 });
   assert.equal(target.state.unconcerned, true);
-  assert.equal(target.state.canDrop, false);
+  assert.equal(target.state.accepts, false);
   assert.equal(target.state.x, undefined);
   mounted.render({ hunger: 2 });
   assert.equal(target.state.concerned, true);
   send(targetEl, "dragover");
-  assert.equal(target.state.canDrop, true);
+  assert.equal(target.state.accepts, true);
   mounted.render({ disabled: true, hunger: 2 });
   assert.equal(source.state.dragging, false);
   assert.equal(sourceEl.hasAttribute("draggable"), false);
@@ -218,7 +218,7 @@ test("subscribe:false keeps initial state without renders while data attributes 
   assert.equal(mounted.renders, renders);
   assert.equal(mounted.source.state.dragging, false);
   assert.deepEqual(mounted.target.state, {});
-  assert.equal(mounted.targetEl().hasAttribute("data-dnd-can"), true);
+  assert.equal(mounted.targetEl().hasAttribute("data-dnd-accepts"), true);
   send(mounted.targetEl(), "drop");
   assert.equal(received.length, 1);
   assert.equal(received[0].drop.hunger, 6);
@@ -244,7 +244,7 @@ test("the subscription setting can change without replacing the controller", (t)
   assert.deepEqual(target.state, {});
   mounted.render({ subscribe: true });
   assert.equal(target.controller, controller);
-  assert.equal(target.state.canDrop, true);
+  assert.equal(target.state.accepts, true);
   mounted.render({ subscribe: false });
   assert.deepEqual(target.state, {});
   send(mounted.container.querySelector("#source"), "dragend");
@@ -332,7 +332,7 @@ test("onChange observes source and target with React subscriptions disabled", (t
   send(container.querySelector("[data-source]"), "dragstart");
   assert.equal(sources.at(-1).dragging, true);
   send(container.querySelector("[data-target]"), "dragover");
-  assert.equal(targets.at(-1).canDrop, true);
+  assert.equal(targets.at(-1).accepts, true);
   send(container.querySelector("[data-source]"), "dragend");
   assert.equal(sources.at(-1).dragging, false);
   assert.deepEqual(targets.at(-1), {});

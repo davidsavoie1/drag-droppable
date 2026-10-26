@@ -148,15 +148,15 @@ export interface DraggableState {
 /**
  * Empty when idle; context and acceptance fields exist during a matching drag.
  * Position fields are removed when leaving the target or after a drop.
- * The corresponding data attributes are only present while canDrop is true.
+ * The corresponding data attributes are only present while accepts is true.
  */
 export interface DroppableState<Drop = unknown, Dragged = unknown>
   extends Partial<DragContext<Dragged, Drop>>, Partial<DropPosition> {
-  dragging?: boolean;
-  concerned?: boolean;
-  unconcerned?: boolean;
-  canDrop?: boolean | null;
+  accepts?: boolean | null;
   attributesPrefix?: AttributesPrefix;
+  concerned?: boolean;
+  dragging?: boolean;
+  unconcerned?: boolean;
 }
 
 /**

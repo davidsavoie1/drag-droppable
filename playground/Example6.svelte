@@ -55,7 +55,7 @@
     cursor: not-allowed;
   }
 
-  div:global([data-foo-can])::before {
+  div:global([data-foo-accepts])::before {
     content: "Swap";
     display: flex;
     align-items: center;
@@ -69,12 +69,12 @@
     border-radius: inherit;
   }
 
-  div:global([data-foo-can][data-foo-top])::before {
+  div:global([data-foo-accepts][data-foo-top])::before {
     border-width: 3px 0 0 0;
     content: "Before";
   }
 
-  div:global([data-foo-can][data-foo-bottom])::before {
+  div:global([data-foo-accepts][data-foo-bottom])::before {
     border-width: 0 0 3px 0;
     content: "After";
   }

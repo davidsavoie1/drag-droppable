@@ -19,7 +19,7 @@ test("Vue composables render idle state without DOM globals", async () => {
           "section",
           null,
           h("div", { ref: source.ref }, String(source.state.value.dragging)),
-          h("div", { ref: target.ref }, String(target.state.value.canDrop)),
+          h("div", { ref: target.ref }, String(target.state.value.accepts)),
         );
     },
   });

@@ -100,7 +100,7 @@ targets and repeated events at identical coordinates. Drop validates current dat
 and final position before either callback runs. These checks cover both `when`
 and `unless`, recovery at drop, and the public `drag` field in snapshots.
 
-`onChange` tests cover immediate notification, callback replacement/removal,
+`onChange` tests cover notification on activation, silent callback replacement, removal/reactivation,
 reentrant updates, reset on unbind/destroy, combined source/target state and
 options passed directly to actions. React and Vue tests also verify callback
 notifications with framework state subscriptions disabled.

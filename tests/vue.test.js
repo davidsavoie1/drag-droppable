@@ -120,7 +120,7 @@ async function pair(t, settings = {}) {
           ? h(
               config.alternate ? "article" : "div",
               { ref: target.ref, "data-target": "" },
-              String(target.state.value.canDrop),
+              String(target.state.value.accepts),
             )
           : null,
       );
@@ -148,7 +148,7 @@ test("Vue composables bind, expose state refs and clean up on unmount", async (t
   await send(mounted.sourceEl(), "dragstart");
   await send(mounted.targetEl(), "dragover");
   assert.equal(mounted.source.state.value.dragging, true);
-  assert.equal(mounted.target.state.value.canDrop, true);
+  assert.equal(mounted.target.state.value.accepts, true);
   assert.equal(mounted.target.state.value.drop.hunger, 6);
   mounted.unmount();
   assert.throws(
@@ -169,7 +169,7 @@ test("reactive data and callback changes preserve hover and use the current data
   mounted.config.hunger = 3;
   mounted.onDrop.value = (args) => received.push(args.drop.hunger);
   await nextTick();
-  assert.equal(mounted.target.state.value.canDrop, true);
+  assert.equal(mounted.target.state.value.accepts, true);
   assert.equal(mounted.target.state.value.y, 75);
   assert.equal(mounted.target.state.value.drop.hunger, 3);
   await send(mounted.targetEl(), "drop", { clientY: 75 });
@@ -190,7 +190,7 @@ test("Vue reactive options refresh acceptance and disabled sources", async (t) =
   mounted.config.hunger = 2;
   await nextTick();
   assert.equal(mounted.target.state.value.concerned, true);
-  assert.equal(mounted.target.state.value.canDrop, false);
+  assert.equal(mounted.target.state.value.accepts, false);
   await send(mounted.targetEl(), "dragover");
   mounted.config.disabled = true;
   await nextTick();
@@ -208,7 +208,7 @@ test("Vue template refs detach and rebind when elements change or disappear", as
   await nextTick();
   assert.notEqual(mounted.targetEl(), old);
   assert.equal(old.hasAttribute("data-dnd-droppable"), false);
-  assert.equal(mounted.target.state.value.canDrop, false);
+  assert.equal(mounted.target.state.value.accepts, false);
   await send(mounted.targetEl(), "dragover");
   mounted.config.visible = false;
   await nextTick();
@@ -227,7 +227,7 @@ test("Vue subscribe:false leaves state idle while attributes and callbacks work"
   assert.equal(mounted.renders, renders);
   assert.equal(mounted.source.state.value.dragging, false);
   assert.deepEqual(mounted.target.state.value, {});
-  assert.equal(mounted.targetEl().hasAttribute("data-dnd-can"), true);
+  assert.equal(mounted.targetEl().hasAttribute("data-dnd-accepts"), true);
   await send(mounted.targetEl(), "drop");
   assert.equal(mounted.callbacks.value.length, 1);
   await send(mounted.sourceEl(), "dragend");
@@ -241,7 +241,7 @@ test("Vue subscription settings can be reactive", async (t) => {
   assert.deepEqual(mounted.target.state.value, {});
   settings.subscribe = true;
   await nextTick();
-  assert.equal(mounted.target.state.value.canDrop, true);
+  assert.equal(mounted.target.state.value.accepts, true);
   settings.subscribe = false;
   await nextTick();
   assert.deepEqual(mounted.target.state.value, {});
@@ -329,7 +329,7 @@ test("onChange observes source and target with Vue subscriptions disabled", asyn
   await send(container.querySelector("[data-source]"), "dragstart");
   assert.equal(sources.at(-1).dragging, true);
   await send(container.querySelector("[data-target]"), "dragover");
-  assert.equal(targets.at(-1).canDrop, true);
+  assert.equal(targets.at(-1).accepts, true);
   await send(container.querySelector("[data-source]"), "dragend");
   assert.equal(sources.at(-1).dragging, false);
   assert.deepEqual(targets.at(-1), {});

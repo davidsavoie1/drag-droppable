@@ -173,7 +173,7 @@ for (const operation of ["disable", "unbind", "destroy", "namespace"]) {
     assert.equal(send(element, "dragover").defaultPrevented, false);
     send(element, "drop");
     assert.equal(drops, 0);
-    assert.equal(element.hasAttribute("data-custom-can"), false);
+    assert.equal(element.hasAttribute("data-custom-accepts"), false);
     assert.doesNotThrow(() => {
       end();
       end();
@@ -334,7 +334,7 @@ test("onDragEnd errors stay visible without leaving targets active", (t) => {
   );
   assert.deepEqual(targetState, {});
   assert.equal(targetEl.hasAttribute("data-dnd-concerned"), false);
-  assert.equal(targetEl.hasAttribute("data-dnd-can"), false);
+  assert.equal(targetEl.hasAttribute("data-dnd-accepts"), false);
   assert.equal(send(targetEl, "dragover").defaultPrevented, false);
   source.destroy();
   assert.equal(ends, 1);

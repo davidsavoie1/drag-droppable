@@ -40,7 +40,7 @@ test("a target added after drag start can accept a drop and is cleaned at drag e
   const snapshot = observe(target.controller);
   assert.equal(snapshot.state.dragging, true);
   assert.equal(snapshot.state.drag, food);
-  assert.equal(snapshot.state.canDrop, false);
+  assert.equal(snapshot.state.accepts, false);
   send(target.element, "drop");
   assert.equal(received, undefined);
   send(target.element, "dragover");
@@ -66,7 +66,7 @@ for (const operation of ["disable", "unbind"]) {
     const snapshot = observe(target.controller);
     const source = start(t);
     send(target.element, "dragover");
-    assert.equal(snapshot.state.canDrop, true);
+    assert.equal(snapshot.state.accepts, true);
     if (operation === "disable")
       target.controller.update((current) => ({ ...current, disabled: true }));
     else target.controller.unbind();
@@ -76,7 +76,7 @@ for (const operation of ["disable", "unbind"]) {
       target.controller.update((current) => ({ ...current, disabled: false }));
     else target.controller.bind(target.element);
     assert.equal(snapshot.state.dragging, true);
-    assert.equal(snapshot.state.canDrop, false);
+    assert.equal(snapshot.state.accepts, false);
     send(target.element, "dragover");
     send(target.element, "drop");
     assert.equal(drops, 1);
@@ -170,7 +170,7 @@ test("updating onDrop preserves hover and uses the new callback without movement
     ...current,
     onDrop: { food: () => calls.push("new") },
   }));
-  assert.equal(snapshot.state.canDrop, true);
+  assert.equal(snapshot.state.accepts, true);
   assert.equal(snapshot.state.x, 25);
   send(target.element, "drop");
   assert.deepEqual(calls, ["new"]);
@@ -193,14 +193,14 @@ test("position attributes follow hover and position fields clear on leave and dr
   function assertCleared() {
     for (const key of positionKeys)
       assert.equal(Object.hasOwn(snapshot.state, key), false, key);
-    for (const key of ["top", "bottom", "left", "right", "can"]) {
+    for (const key of ["top", "bottom", "left", "right", "accepts"]) {
       assert.equal(
         target.element.hasAttribute(`data-custom-${key}`),
         false,
         key,
       );
     }
-    assert.equal(snapshot.state.canDrop, null);
+    assert.equal(snapshot.state.accepts, null);
     assert.equal(snapshot.state.concerned, true);
   }
   for (const [clientX, clientY] of [
@@ -294,11 +294,11 @@ for (const change of [
       ...(change === "default namespace" ? { namespace: "" } : {}),
       ...(change === "prefix" ? { attributesPrefix: "custom" } : {}),
     }));
-    assert.equal(snapshot.state.canDrop, true);
+    assert.equal(snapshot.state.accepts, true);
     assert.equal(snapshot.state.x, 75);
     assert.equal(snapshot.state.bottom, true);
     const prefix = change === "prefix" ? "custom" : "dnd";
-    assert.equal(target.element.hasAttribute(`data-${prefix}-can`), true);
+    assert.equal(target.element.hasAttribute(`data-${prefix}-accepts`), true);
     assert.equal(target.element.hasAttribute(`data-${prefix}-bottom`), true);
     if (change === "prefix") {
       assert.equal(
@@ -313,7 +313,7 @@ for (const change of [
     assert.equal(received.drop, nextBaby);
     send(source.element, "dragend");
     assert.deepEqual(snapshot.state, {});
-    assert.equal(target.element.hasAttribute(`data-${prefix}-can`), false);
+    assert.equal(target.element.hasAttribute(`data-${prefix}-accepts`), false);
   });
 }
 
@@ -333,13 +333,13 @@ test("a target becoming refused clears hover, and becoming accepted requires ano
   target.controller.update((current) => ({ ...current, data: { hunger: 0 } }));
   assert.equal(snapshot.state.unconcerned, true);
   assert.equal(snapshot.state.x, undefined);
-  assert.equal(target.element.hasAttribute("data-dnd-can"), false);
+  assert.equal(target.element.hasAttribute("data-dnd-accepts"), false);
   assert.equal(target.element.style.cursor, "not-allowed");
   send(target.element, "drop");
   assert.equal(drops, 0);
   target.controller.update((current) => ({ ...current, data: { hunger: 2 } }));
   assert.equal(snapshot.state.concerned, true);
-  assert.equal(snapshot.state.canDrop, false);
+  assert.equal(snapshot.state.accepts, false);
   assert.equal(target.element.style.cursor, "");
   send(target.element, "drop");
   assert.equal(drops, 0);
@@ -362,7 +362,7 @@ test("changing the actual target clears hover and moves DOM listeners", (t) => {
   const source = start(t);
   send(target.element, "dragover");
   target.controller.update((current) => ({ ...current, target: nextTarget }));
-  assert.equal(snapshot.state.canDrop, false);
+  assert.equal(snapshot.state.accepts, false);
   assert.equal(snapshot.state.x, undefined);
   assert.equal(send(target.element, "dragover").defaultPrevented, false);
   send(nextTarget, "drop");
@@ -491,7 +491,7 @@ for (const coordinate of [25, 75]) {
       clientY: coordinate,
     });
     const before = target.controller.getSnapshot();
-    assert.equal(before.canDrop, true);
+    assert.equal(before.accepts, true);
     assert.equal(before[coordinate < 50 ? "top" : "bottom"], true);
     assert.equal(before[coordinate < 50 ? "left" : "right"], true);
 
@@ -505,7 +505,7 @@ for (const coordinate of [25, 75]) {
       clientY: coordinate,
     });
     const centered = target.controller.getSnapshot();
-    assert.equal(centered.canDrop, true);
+    assert.equal(centered.accepts, true);
     assert.equal(centered.x, before.x);
     assert.equal(centered.y, before.y);
     for (const side of ["top", "bottom", "left", "right"]) {
@@ -580,19 +580,19 @@ for (const predicate of ["when", "unless"]) {
     assert.equal(calls[0].x, undefined);
     const initialOtherCalls = otherCalls;
     send(target.element, "dragover", { clientX: 75, clientY: 0 });
-    assert.equal(target.controller.getSnapshot().canDrop, false);
+    assert.equal(target.controller.getSnapshot().accepts, false);
     baby.hunger = 3;
     // Same coordinates, no options update: the initially refused target recovers.
     send(target.element, "dragover", { clientX: 75, clientY: 0 });
-    assert.equal(target.controller.getSnapshot().canDrop, true);
-    assert.equal(target.element.hasAttribute("data-dnd-can"), true);
+    assert.equal(target.controller.getSnapshot().accepts, true);
+    assert.equal(target.element.hasAttribute("data-dnd-accepts"), true);
     assert.equal(target.element.style.cursor, "");
     assert.equal(calls.at(-1).dx, 0.75);
     assert.equal(calls.at(-1).top, true);
     baby.hunger = 0;
     send(target.element, "dragover", { clientX: 75, clientY: 0 });
-    assert.equal(target.controller.getSnapshot().canDrop, false);
-    assert.equal(target.element.hasAttribute("data-dnd-can"), false);
+    assert.equal(target.controller.getSnapshot().accepts, false);
+    assert.equal(target.element.hasAttribute("data-dnd-accepts"), false);
     // A refused hover can also recover at drop itself.
     baby.hunger = 3;
     send(target.element, "drop", { clientX: 75, clientY: 0 });

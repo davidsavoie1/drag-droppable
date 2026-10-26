@@ -117,7 +117,7 @@ test("combined updater runs once on a shallow copy and refreshes a hovered drop"
     return { ...current, data: "Leo", onDrop: (args) => received.push(args) };
   });
   assert.equal(updates, 1);
-  assert.equal(target.element.hasAttribute("data-dnd-can"), true);
+  assert.equal(target.element.hasAttribute("data-dnd-accepts"), true);
   send(target.element, "drop");
   send(source.element, "dragend");
   assert.equal(oldCalls, 0);
@@ -175,7 +175,7 @@ test("destroying an active combined source ends target participation", (t) => {
   source.binding.destroy();
   assert.equal(source.element.attributes.size, 0);
   assert.equal(target.element.hasAttribute("data-dnd-concerned"), false);
-  assert.equal(target.element.hasAttribute("data-dnd-can"), false);
+  assert.equal(target.element.hasAttribute("data-dnd-accepts"), false);
   send(target.element, "drop");
   assert.equal(drops, 0);
 });
@@ -242,12 +242,12 @@ test("combined controllers reject their own drag and accept identical data from 
   send(source.element, "dragstart");
   flushFrames();
   assert.equal(send(source.element, "dragover").defaultPrevented, true);
-  assert.equal(source.element.hasAttribute("data-dnd-can"), false);
+  assert.equal(source.element.hasAttribute("data-dnd-accepts"), false);
   assert.equal(source.element.hasAttribute("data-dnd-unconcerned"), true);
   send(source.element, "drop");
   assert.equal(calls.length, 0);
   send(target.element, "dragover");
-  assert.equal(target.element.hasAttribute("data-dnd-can"), true);
+  assert.equal(target.element.hasAttribute("data-dnd-accepts"), true);
   send(target.element, "drop");
   assert.equal(calls.length, 1);
   assert.equal(calls[0].drag, data);
@@ -284,9 +284,9 @@ test("allowSelfDrop can change during a drag and resets with replacement options
   assert.equal(store.getSnapshot().concerned, false);
   store.update((current) => ({ ...current, allowSelfDrop: true }));
   send(element, "dragover");
-  assert.equal(store.getSnapshot().canDrop, true);
+  assert.equal(store.getSnapshot().accepts, true);
   store.update((current) => ({ ...current, allowSelfDrop: false }));
-  assert.equal(store.getSnapshot().canDrop, false);
+  assert.equal(store.getSnapshot().accepts, false);
   send(element, "drop");
   assert.equal(calls, 0);
   store.update((current) => ({ ...current, allowSelfDrop: true }));

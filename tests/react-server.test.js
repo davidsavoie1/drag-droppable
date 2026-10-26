@@ -13,7 +13,7 @@ test("hooks render on the server without DOM globals", () => {
       "section",
       null,
       h("div", { ref: drag.ref }, String(drag.state.dragging)),
-      h("div", { ref: drop.ref }, String(drop.state.canDrop)),
+      h("div", { ref: drop.ref }, String(drop.state.accepts)),
     );
   }
   assert.equal(

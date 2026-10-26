@@ -179,11 +179,11 @@ test("touch auto-scroll waits for activation, retargets the drop and keeps the i
   assert.equal(document.scrollingElement.scrollTop, 0);
   source.hold();
   touch(source.element, "touchmove", 1, 200, 590);
-  assert.equal(first.controller.getSnapshot().canDrop, true);
+  assert.equal(first.controller.getSnapshot().accepts, true);
   flushFrames();
   assert.ok(document.scrollingElement.scrollTop > 0);
-  assert.equal(first.controller.getSnapshot().canDrop, null);
-  assert.equal(second.controller.getSnapshot().canDrop, true);
+  assert.equal(first.controller.getSnapshot().accepts, null);
+  assert.equal(second.controller.getSnapshot().accepts, true);
   const image = document.body.children[0];
   assert.equal(image.style.position, "fixed");
   assert.equal(Number.parseFloat(image.style.top), 590);

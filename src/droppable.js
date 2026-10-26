@@ -244,10 +244,10 @@ export default function droppable(options) {
     if (!el) return;
 
     const {
+      accepts,
       attributesPrefix = getConfig().attributesPrefix,
       bottom,
       concerned,
-      canDrop,
       dragging,
       left,
       right,
@@ -262,12 +262,12 @@ export default function droppable(options) {
 
     /* Position attributes are present only during an accepted hover. */
     Object.entries({
-      bottom: canDrop && bottom,
-      can: canDrop,
+      accepts,
+      bottom: accepts && bottom,
       concerned,
-      left: canDrop && left,
-      right: canDrop && right,
-      top: canDrop && top,
+      left: accepts && left,
+      right: accepts && right,
+      top: accepts && top,
       unconcerned,
     }).forEach(([k, v]) => {
       el.toggleAttribute(`data-${attributesPrefix}-${k}`, !!(shouldSet && v));
@@ -373,8 +373,8 @@ export default function droppable(options) {
       }
 
       publish({
-        ...(preserveHover ? state : { canDrop: false }),
-        ...(position ? { canDrop: concerned, ...position } : {}),
+        ...(preserveHover ? state : { accepts: false }),
+        ...(position ? { accepts: concerned, ...position } : {}),
         ...baseArgs,
         attributesPrefix,
         concerned,
@@ -405,7 +405,7 @@ export default function droppable(options) {
 
       publish({
         ...stateWithoutPositionning,
-        canDrop: null,
+        accepts: null,
       });
     }
 
