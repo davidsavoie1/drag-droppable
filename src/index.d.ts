@@ -97,7 +97,7 @@ export interface DraggableOptions<Dragged = unknown, Drop = unknown> {
     namespace: string | null | undefined,
   ) => void;
   onDrop?: DropCallback<Dragged, Drop>;
-  /** Called immediately on addition/replacement, then whenever source state changes. */
+  /** Called on activation and source state changes; replacing the callback does not notify. */
   onChange?: (state: DraggableState) => void;
 }
 
@@ -114,7 +114,7 @@ export interface DroppableOptions<Drop = unknown, Dragged = unknown> {
   /** Override the global left/right width fraction. Zero disables this axis. */
   leftRightThreshold?: number;
   target?: HTMLElement | string;
-  /** Called immediately on addition/replacement, then whenever target state changes. */
+  /** Called on activation and target state changes; replacing the callback does not notify. */
   onChange?: (state: DroppableState<Drop, Dragged>) => void;
   when?: ByType<DropPredicate<Dragged, Drop>>;
   unless?: ByType<DropPredicate<Dragged, Drop>>;
@@ -127,7 +127,7 @@ export type DnDOptions<Data = unknown, Dragged = unknown> = Omit<
   "onDrop" | "onChange"
 > &
   Omit<DroppableOptions<Data, Dragged>, "onChange"> & {
-    /** Observe the combined state, with dragging describing this element as a source. */
+    /** Called on activation and combined state changes; replacement does not notify. */
     onChange?: (state: DragDroppableState<Data, Dragged>) => void;
     /** Allow this controller to receive its own drag. Default false. */
     allowSelfDrop?: boolean;

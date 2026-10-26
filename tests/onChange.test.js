@@ -13,14 +13,14 @@ test("onChange is immediate, follows state, and replaces or removes callbacks", 
   assert.equal(first.length, 1);
   const replacement = (state) => second.push(state);
   target.controller.update({ type: "food", onChange: replacement });
-  assert.deepEqual(second, [{}]);
+  assert.deepEqual(second, []);
   const source = bind(t, draggable, { type: "food" });
   send(source.element, "dragstart");
   flushFrames();
   assert.equal(first.length, 1);
   assert.equal(second.at(-1).concerned, true);
   send(target.element, "dragover");
-  assert.equal(second.at(-1).canDrop, true);
+  assert.equal(second.at(-1).accepts, true);
   const count = second.length;
   send(target.element, "dragover");
   assert.equal(second.length, count);
@@ -47,11 +47,11 @@ test("an immediate onChange can replace itself without duplicate notifications",
     },
   });
   assert.equal(firstCalls, 1);
-  assert.deepEqual(received, [{}]);
+  assert.deepEqual(received, []);
   const source = bind(t, draggable, { type: "food" });
   send(source.element, "dragstart");
   flushFrames();
-  assert.equal(received.length, 2);
+  assert.equal(received.length, 1);
   assert.equal(received.at(-1).concerned, true);
 });
 
@@ -65,7 +65,7 @@ for (const operation of ["destroy", "unbind"]) {
     send(source.element, "dragstart");
     flushFrames();
     send(target.element, "dragover");
-    assert.equal(received.at(-1).canDrop, true);
+    assert.equal(received.at(-1).accepts, true);
     target.controller[operation]();
     assert.deepEqual(received.at(-1), {});
   });
@@ -103,8 +103,7 @@ for (const factory of [draggable, dragDroppable]) {
     const replacementStates = [];
     const replacement = (state) => replacementStates.push(state);
     controller.update({ type: "food", onChange: replacement });
-    assert.equal(replacementStates.length, 1);
-    assert.equal(replacementStates[0], controller.getSnapshot());
+    assert.equal(replacementStates.length, 0);
     const oldCount = received.length;
     send(element, "dragend");
     assert.equal(replacementStates.at(-1).dragging, false);
@@ -129,9 +128,9 @@ for (const factory of [draggable, dragDroppable]) {
       }),
     });
     assert.equal(element.attributes.get("data-dnd-draggable-type"), "current");
-    assert.equal(received.length, 1);
+    assert.equal(received.length, 0);
     send(element, "dragstart");
-    assert.equal(received.length, 2);
+    assert.equal(received.length, 1);
   });
 
   for (const operation of ["destroy", "unbind"]) {
@@ -169,7 +168,7 @@ test("combined onChange observes target hover without reporting source dragging"
   send(source.element, "dragstart");
   flushFrames();
   send(target.element, "dragover");
-  assert.equal(received.at(-1).canDrop, true);
+  assert.equal(received.at(-1).accepts, true);
   assert.equal(received.at(-1).drag, "meal");
   assert.equal(received.at(-1).dragging, false);
   const count = received.length;
@@ -193,12 +192,67 @@ for (const action of [dndDrag, dndDrop, dnd]) {
       send(source.element, "dragstart");
       flushFrames();
       send(element, "dragover");
-      assert.equal(received.at(-1).canDrop, true);
+      assert.equal(received.at(-1).accepts, true);
     } else {
       send(element, "dragstart");
       assert.equal(received.at(-1).dragging, true);
     }
     binding.destroy();
     assert.equal(!!received.at(-1).dragging, false);
+  });
+}
+
+for (const factory of [draggable, droppable, dragDroppable]) {
+  test(`${factory.name}: inline callback replacement is silent and the latest callback receives changes`, (t) => {
+    const first = [];
+    const latest = [];
+    const { controller, element } = bind(t, factory, {
+      type: "food", onChange: (state) => first.push(state),
+    });
+    assert.equal(first.length, 1);
+    for (let i = 0; i < 3; i++) {
+      controller.update({ type: "food", onChange: (state) => latest.push([i, state]) });
+    }
+    assert.deepEqual(latest, []);
+    const source = factory !== draggable
+      ? bind(t, draggable, { type: "food" })
+      : { element };
+    send(source.element, "dragstart");
+    flushFrames();
+    assert.equal(first.length, 1);
+    assert.equal(latest.length, 1);
+    assert.equal(latest[0][0], 2);
+    assert.equal(latest[0][1], controller.getSnapshot());
+    controller.update({ type: "food" });
+    const reactivated = [];
+    controller.update({ type: "food", onChange: (state) => reactivated.push(state) });
+    assert.deepEqual(reactivated, [controller.getSnapshot()]);
+    send(source.element, "dragend");
+    assert.equal(reactivated.length, 2);
+    assert.equal(latest.length, 1);
+  });
+
+  test(`${factory.name}: replacing onChange from a notification does not recurse`, (t) => {
+    const { controller, element } = bind(t, factory, { type: "food" });
+    const first = [];
+    const next = [];
+    controller.update({
+      type: "food",
+      onChange(state) {
+        first.push(state);
+        controller.update({ type: "food", onChange: (value) => next.push(value) });
+      },
+    });
+    assert.equal(first.length, 1);
+    assert.equal(next.length, 0);
+    const source = factory !== draggable
+      ? bind(t, draggable, { type: "food" })
+      : { element };
+    send(source.element, "dragstart");
+    flushFrames();
+    assert.equal(next.length, 1);
+    send(source.element, "dragend");
+    assert.equal(first.length, 1);
+    assert.equal(next.length, 2);
   });
 }

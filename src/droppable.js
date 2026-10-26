@@ -127,7 +127,7 @@ export default function droppable(options) {
 
     const currentOptions = _options;
     onChange = isFunc(_options.onChange) ? _options.onChange : undefined;
-    if (onChange !== previousOnChange) onChange?.(state);
+    if (!previousOnChange) onChange?.(state);
 
     /* The initial notification may replace options or destroy the controller. */
     if (destroyed || _options !== currentOptions) return;
