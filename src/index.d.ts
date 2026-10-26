@@ -118,6 +118,19 @@ export interface DroppableOptions<Drop = unknown, Dragged = unknown> {
   onDrop?: ByType<DropCallback<Dragged, Drop>>;
 }
 
+/** Flat options for both roles. Data is shared; onDrop handles received drops only. */
+export type DnDOptions<Data = unknown, Dragged = unknown> = Omit<
+  DraggableOptions<Data>,
+  "onDrop"
+> &
+  DroppableOptions<Data, Dragged>;
+
+/** The combined store uses the same flat options as the dnd binding. */
+export type DragDroppableOptions<
+  Data = unknown,
+  Dragged = unknown,
+> = DnDOptions<Data, Dragged>;
+
 export interface DraggableState {
   dragging: boolean;
   pointerType?: string;
@@ -137,6 +150,13 @@ export interface DroppableState<Drop = unknown, Dragged = unknown>
   canDrop?: boolean | null;
   attributesPrefix?: AttributesPrefix;
 }
+
+/**
+ * Target state combined with source state. `dragging` refers to this element
+ * being dragged; `dragged`, `drop`, `type`, and hover fields describe incoming drags.
+ */
+export interface DragDroppableState<Data = unknown, Dragged = unknown>
+  extends Omit<DroppableState<Data, Dragged>, "dragging">, DraggableState {}
 
 export type OptionsUpdate<Options> =
   Options | DisabledOptions | ((current: Options) => Options | DisabledOptions);
@@ -166,6 +186,19 @@ export type DroppableController<
   DroppableState<Drop, Dragged>
 >;
 
+export type DragDroppableController<
+  Data = unknown,
+  Dragged = unknown,
+> = DnDController<
+  DragDroppableOptions<Data, Dragged>,
+  DragDroppableState<Data, Dragged>
+>;
+
+/** The first generic describes this element's shared data; the second, incoming data. */
+export function dragDroppable<Data = unknown, Dragged = unknown>(
+  options?: DragDroppableOptions<Data, Dragged> | DisabledOptions,
+): DragDroppableController<Data, Dragged>;
+
 /** The first generic describes this controller's data; the second, its partner's. */
 export function draggable<Dragged = unknown, Drop = unknown>(
   options?: DraggableOptions<Dragged, Drop> | DisabledOptions,
@@ -180,6 +213,22 @@ export interface DnDBinding<Update> {
   update(options: Update): void;
   destroy(): void;
 }
+
+/**
+ * Bind flat options directly, also as `use:dnd={options}`. The binding owns
+ * a combined controller and destroys it on cleanup. onDrop belongs to the target.
+ * The first generic describes this element's shared data; the second, incoming data.
+ */
+export function dnd<Data = unknown, Dragged = unknown>(
+  element: HTMLElement,
+  options?: DnDOptions<Data, Dragged> | DisabledOptions,
+): DnDBinding<OptionsUpdate<DnDOptions<Data, Dragged>>>;
+
+/** Supplied combined controllers are only unbound on destroy. Update accepts the same instance. */
+export function dnd<Data = unknown, Dragged = unknown>(
+  element: HTMLElement,
+  controller: DragDroppableController<Data, Dragged>,
+): DnDBinding<DragDroppableController<Data, Dragged>>;
 
 /** Bind options directly; also usable as a Svelte action. */
 export function dndDrag<Dragged = unknown, Drop = unknown>(
