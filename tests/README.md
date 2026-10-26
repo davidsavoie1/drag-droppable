@@ -99,3 +99,8 @@ object. Hover events re-evaluate only their target, including initially refused
 targets and repeated events at identical coordinates. Drop validates current data
 and final position before either callback runs. These checks cover both `when`
 and `unless`, recovery at drop, and the public `drag` field in snapshots.
+
+`onChange` tests cover immediate notification, callback replacement/removal,
+reentrant updates, reset on unbind/destroy, combined source/target state and
+options passed directly to actions. React and Vue tests also verify callback
+notifications with framework state subscriptions disabled.

@@ -161,6 +161,8 @@ const {
 
 ### Handling
 
+**`onChange(state)`**: Observe source state immediately and on changes, without creating a store. Receives `dragging`, `pointerType`, and the other source snapshot fields. See the [droppable callback lifecycle](#handling-1) below.
+
 **`onDrag(data, type, namespace)`**: Function to execute when a drag is initiated.
 
 **`onDragEnd(data, type, namespace)`**: Function to execute when a drag ends, whether it resulted in a successful drop or was cancelled. Receives the data, type and namespace captured when the drag started. Use `onDrop` for successful drops and `onDragEnd` for end-of-drag cleanup.
@@ -233,6 +235,22 @@ const {
 ### Handling
 
 **`onDrop({ ...onDropArgs })`**: Function to execute when dragged element is dropped. See [`onDrop`](#ondrop).
+
+**`onChange(state)`**: Available on all controllers and bindings. Receives the current snapshot immediately when the callback is added or replaced, then whenever that snapshot changes. Keeping the same callback reference does not trigger another initial notification. Omitting it from replacement options removes it. Unbinding or destroying a controller resets its state before removing the callback. `droppable` resets to an empty object; source and combined states have `dragging: false`. `dragDroppable` and `dnd` report the combined state, with `dragging` describing the source role. Treat snapshots as read-only.
+
+For example, observe a target directly in Svelte:
+
+```svelte
+<script>
+  import { dndDrop } from "drag-droppable";
+  let drop = $state({});
+  const onChange = (state) => { drop = state; };
+</script>
+
+<div use:dndDrop={{ type: "food", onChange }} class:highlight={drop.canDrop} />
+```
+
+Keep the callback reference stable to avoid repeated initial notifications on options updates. React hooks and Vue composables also accept `onChange` in their options; it remains active with `{ subscribe: false }`, which only disables their framework state subscription.
 
 **`unless({ drag, drop, type, namespace, ...position })`**: Predicate function that prevents drop when true.
 

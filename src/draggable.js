@@ -26,34 +26,90 @@ import {
 export default function draggable(options = {}) {
   const sourceIdentity = {};
 
-  let el;
-  let destroyed = false;
-  let subscribers = new Set();
-  let activeHandle = undefined;
-
   /* draggable options (can be updated dynamically) */
   let _options = {};
-
+  let activeHandle = undefined;
+  let el;
+  let onChange;
+  let destroyed = false;
   /* Cleanup function to execute when drag ends */
   let dragEndCleanup = undefined;
-
-  /* Are handlers set on the element? */
-  let handlersSet = false;
-
-  /* Keep track of last pointer type on pointerdown */
-  let lastPointerType = undefined;
-
-  /* Store the original pointerdown target */
-  let lastPointerDownTarget = undefined;
-
-  /* Animation frame reference */
-  let pendingDragFrame = undefined;
-
   /* Source values and end callback captured at drag start */
   let dragSession;
-
+  /* Are handlers set on the element? */
+  let handlersSet = false;
+  /* Store the original pointerdown target */
+  let lastPointerDownTarget = undefined;
+  /* Keep track of last pointer type on pointerdown */
+  let lastPointerType = undefined;
+  /* Animation frame reference */
+  let pendingDragFrame = undefined;
+  let subscribers = new Set();
   let state = {
     dragging: false /* Is the element currently being dragged? */,
+  };
+  let unsetDataAttributes;
+
+  setOptions(options);
+
+  return {
+    /* Attach the controller to a single DOM element. Rebinding to the same
+     * element is allowed, but switching to a different element requires
+     * `unbind()` first. */
+    bind(element) {
+      setElement(element);
+      updateRegistration();
+    },
+
+    /* Fully tear down the controller. This is terminal for the current
+     * store instance. */
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      unsetHandlers();
+      unsubscribeAll();
+      el = undefined;
+      publish({ dragging: false });
+      onChange = undefined;
+    },
+
+    /** Return the current state by reference. Treat it as read-only.
+     * The same reference is returned until the state is replaced. */
+    getSnapshot() {
+      return state;
+    },
+
+    /**
+     * Replace all options, directly or through an updater receiving a shallow
+     * copy. Return the replacement; omitted options are not preserved.
+     * Passing or returning a falsy value resets to `{ disabled: true }`.
+     */
+    update(optionsOrFn) {
+      assertNotDestroyed();
+
+      if (isFunc(optionsOrFn)) {
+        const curr = cloneWhenObject(_options || {});
+        const newOptions = optionsOrFn(curr);
+        return setOptions(newOptions);
+      }
+
+      setOptions(optionsOrFn);
+    },
+
+    subscribe,
+
+    /* Detach from the currently bound element without destroying the store.
+     * The same store may then be rebound later. */
+    unbind() {
+      if (destroyed) return;
+      unsetHandlers();
+      el = undefined;
+      publish({ dragging: false });
+    },
+
+    [DRAG_SOURCE]: sourceIdentity,
+    [DND_STORE]: true,
+    [DRAGGABLE]: true,
   };
 
   function assertNotDestroyed() {
@@ -72,6 +128,7 @@ export default function draggable(options = {}) {
 
   function setOptions(newOptions) {
     assertNotDestroyed();
+    const previousOnChange = onChange;
     if (!newOptions) {
       _options = { disabled: true };
     } else {
@@ -84,11 +141,22 @@ export default function draggable(options = {}) {
       _options = rest;
     }
 
+    const currentOptions = _options;
+    onChange = isFunc(_options.onChange) ? _options.onChange : undefined;
+    if (onChange !== previousOnChange) onChange?.(state);
+
+    /* A notification may replace options or destroy the controller. */
+    if (destroyed || _options !== currentOptions) return;
     updateRegistration();
   }
 
   function publish(newState = state) {
+    const keys = new Set([...Object.keys(state), ...Object.keys(newState)]);
+    if ([...keys].every((key) => Object.is(state[key], newState[key]))) return;
+
     state = newState;
+    toggleAttributes();
+    onChange?.(state);
     subscribers.forEach((sub) => sub(state));
   }
 
@@ -109,13 +177,11 @@ export default function draggable(options = {}) {
   }
 
   function setState(fnOrPartial) {
-    state =
+    publish(
       typeof fnOrPartial === "function"
         ? fnOrPartial(state)
-        : { ...state, ...fnOrPartial };
-
-    toggleAttributes();
-    publish(state);
+        : { ...state, ...fnOrPartial },
+    );
   }
 
   function toggleAttributes() {
@@ -292,8 +358,6 @@ export default function draggable(options = {}) {
     registerTouchDnDTarget(handle, touch);
   }
 
-  let unsetDataAttributes;
-
   function setDataAttributes() {
     const {
       attributesPrefix = getConfig().attributesPrefix,
@@ -357,67 +421,6 @@ export default function draggable(options = {}) {
     activeHandle = undefined;
     handlersSet = false;
   }
-
-  setOptions(options);
-
-  return {
-    /* Attach the controller to a single DOM element. Rebinding to the same
-     * element is allowed, but switching to a different element requires
-     * `unbind()` first. */
-    bind(element) {
-      setElement(element);
-      updateRegistration();
-    },
-
-    /* Fully tear down the controller. This is terminal for the current
-     * store instance. */
-    destroy() {
-      if (destroyed) return;
-      destroyed = true;
-      unsetHandlers();
-      unsubscribeAll();
-      el = undefined;
-      publish({ dragging: false });
-    },
-
-    /** Return the current state by reference. Treat it as read-only.
-     * The same reference is returned until the state is replaced. */
-    getSnapshot() {
-      return state;
-    },
-
-    /**
-     * Replace all options, directly or through an updater receiving a shallow
-     * copy. Return the replacement; omitted options are not preserved.
-     * Passing or returning a falsy value resets to `{ disabled: true }`.
-     */
-    update(optionsOrFn) {
-      assertNotDestroyed();
-
-      if (isFunc(optionsOrFn)) {
-        const curr = cloneWhenObject(_options || {});
-        const newOptions = optionsOrFn(curr);
-        return setOptions(newOptions);
-      }
-
-      setOptions(optionsOrFn);
-    },
-
-    subscribe,
-
-    /* Detach from the currently bound element without destroying the store.
-     * The same store may then be rebound later. */
-    unbind() {
-      if (destroyed) return;
-      unsetHandlers();
-      el = undefined;
-      publish({ dragging: false });
-    },
-
-    [DRAG_SOURCE]: sourceIdentity,
-    [DND_STORE]: true,
-    [DRAGGABLE]: true,
-  };
 }
 
 /* Return whether the original pointer target should prevent drag initiation. */

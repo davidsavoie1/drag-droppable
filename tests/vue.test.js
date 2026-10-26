@@ -308,3 +308,29 @@ test("Vue drop callbacks can update reactive application data", async (t) => {
   assert.equal(source.state.value.dragging, false);
   assert.deepEqual(target.state.value, {});
 });
+
+test("onChange observes source and target with Vue subscriptions disabled", async (t) => {
+  const sources = [];
+  const targets = [];
+  const { container } = await mount(t, () => {
+    const source = useDraggable(
+      { type: "food", onChange: (state) => sources.push(state) },
+      { subscribe: false },
+    );
+    const target = useDroppable(
+      { type: "food", onChange: (state) => targets.push(state) },
+      { subscribe: false },
+    );
+    return () => h("section", null,
+      h("div", { ref: source.ref, "data-source": "" }),
+      h("div", { ref: target.ref, "data-target": "" }),
+    );
+  });
+  await send(container.querySelector("[data-source]"), "dragstart");
+  assert.equal(sources.at(-1).dragging, true);
+  await send(container.querySelector("[data-target]"), "dragover");
+  assert.equal(targets.at(-1).canDrop, true);
+  await send(container.querySelector("[data-source]"), "dragend");
+  assert.equal(sources.at(-1).dragging, false);
+  assert.deepEqual(targets.at(-1), {});
+});

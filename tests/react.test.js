@@ -308,3 +308,32 @@ test("drop callbacks can update React application state without feedback loops",
   assert.equal(source.state.dragging, false);
   assert.deepEqual(target.state, {});
 });
+
+test("onChange observes source and target with React subscriptions disabled", (t) => {
+  const sources = [];
+  const targets = [];
+  const onSourceChange = (state) => sources.push(state);
+  const onTargetChange = (state) => targets.push(state);
+  function App() {
+    const source = useDraggable(
+      { type: "food", onChange: onSourceChange },
+      { subscribe: false },
+    );
+    const target = useDroppable(
+      { type: "food", onChange: onTargetChange },
+      { subscribe: false },
+    );
+    return h("section", null,
+      h("div", { ref: source.ref, "data-source": "" }),
+      h("div", { ref: target.ref, "data-target": "" }),
+    );
+  }
+  const { container } = mount(t, App);
+  send(container.querySelector("[data-source]"), "dragstart");
+  assert.equal(sources.at(-1).dragging, true);
+  send(container.querySelector("[data-target]"), "dragover");
+  assert.equal(targets.at(-1).canDrop, true);
+  send(container.querySelector("[data-source]"), "dragend");
+  assert.equal(sources.at(-1).dragging, false);
+  assert.deepEqual(targets.at(-1), {});
+});

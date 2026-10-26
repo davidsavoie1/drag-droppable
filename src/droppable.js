@@ -20,15 +20,81 @@ import {
  * See the README for options and callback signatures.
  */
 export default function droppable(options) {
-  let el;
-  let destroyed = false;
-  let subscribers = new Set();
-  let state = {};
-
   let _options = {};
-
-  let dragListeners = {}; /* Subscriptions to drag event by type */
   let activeDrag; /* Participation kept independently of registry subscriptions. */
+  let destroyed = false;
+  let dragListeners = {}; /* Subscriptions to drag event by type */
+  let el;
+  let onChange;
+  let registeredNamespace;
+  let state = {};
+  let subscribers = new Set();
+  let unsetDataAttributes;
+
+  setOptions(options);
+
+  return {
+    /* Attach the controller to a single DOM element. Rebinding to the same
+     * element is allowed, but switching to a different element requires
+     * `unbind()` first. */
+    bind(element) {
+      setElement(element);
+      updateRegistration();
+    },
+
+    /* Fully tear down the controller. This is terminal for the current
+     * store instance. */
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      toggleAttributes({ forceRemove: true });
+      unregister();
+      activeDrag?.cleanup();
+      onChange = undefined;
+      unsubscribeAll();
+      el = undefined;
+      publish({});
+    },
+
+    /** Return the current state by reference. Treat it as read-only.
+     * The same reference is returned until the state is replaced. */
+    getSnapshot() {
+      return state;
+    },
+
+    /**
+     * Replace all options, directly or through an updater receiving a shallow
+     * copy. Return the replacement; omitted options are not preserved.
+     * Passing or returning a falsy value resets to `{ disabled: true }`.
+     */
+    update(optionsOrFn) {
+      assertNotDestroyed();
+
+      if (isFunc(optionsOrFn)) {
+        const curr = cloneWhenObject(_options || {});
+        const newOptions = optionsOrFn(curr);
+        return setOptions(newOptions);
+      }
+
+      setOptions(optionsOrFn);
+    },
+
+    subscribe,
+
+    /* Detach from the currently bound element without destroying the store.
+     * The same store may then be rebound later. */
+    unbind() {
+      if (destroyed) return;
+      toggleAttributes({ forceRemove: true });
+      unregister();
+      activeDrag?.cleanup();
+      el = undefined;
+      publish({});
+    },
+
+    [DND_STORE]: true,
+    [DROPPABLE]: true,
+  };
 
   function assertNotDestroyed() {
     if (destroyed)
@@ -46,17 +112,25 @@ export default function droppable(options) {
 
   function setOptions(newOptions) {
     assertNotDestroyed();
+    const previousOnChange = onChange;
     if (!newOptions) {
       _options = { disabled: true };
     } else {
       const { el: newEl, ...rest } = newOptions;
 
       if (!isElement(el) && isElement(newEl)) {
-        setElement(newOptions.el);
+        setElement(newEl);
       }
 
       _options = { ...rest };
     }
+
+    const currentOptions = _options;
+    onChange = isFunc(_options.onChange) ? _options.onChange : undefined;
+    if (onChange !== previousOnChange) onChange?.(state);
+
+    /* The initial notification may replace options or destroy the controller. */
+    if (destroyed || _options !== currentOptions) return;
 
     updateRegistration();
   }
@@ -85,8 +159,6 @@ export default function droppable(options) {
     return target || el;
   }
 
-  let unsetDataAttributes;
-
   function setDataAttributes() {
     const { attributesPrefix = getConfig().attributesPrefix, namespace } =
       _options;
@@ -110,8 +182,6 @@ export default function droppable(options) {
       );
     };
   }
-
-  let registeredNamespace;
 
   function register() {
     unregister();
@@ -166,6 +236,7 @@ export default function droppable(options) {
 
     state = newState;
     toggleAttributes();
+    onChange?.(state);
     subscribers.forEach((sub) => sub(state));
   }
 
@@ -436,70 +507,6 @@ export default function droppable(options) {
       handlersSet = false;
     }
   }
-
-  setOptions(options);
-
-  return {
-    /* Attach the controller to a single DOM element. Rebinding to the same
-     * element is allowed, but switching to a different element requires
-     * `unbind()` first. */
-    bind(element) {
-      setElement(element);
-      updateRegistration();
-    },
-
-    /* Fully tear down the controller. This is terminal for the current
-     * store instance. */
-    destroy() {
-      if (destroyed) return;
-      destroyed = true;
-      toggleAttributes({ forceRemove: true });
-      unregister();
-      activeDrag?.cleanup();
-      unsubscribeAll();
-      el = undefined;
-      publish({});
-    },
-
-    /** Return the current state by reference. Treat it as read-only.
-     * The same reference is returned until the state is replaced. */
-    getSnapshot() {
-      return state;
-    },
-
-    /**
-     * Replace all options, directly or through an updater receiving a shallow
-     * copy. Return the replacement; omitted options are not preserved.
-     * Passing or returning a falsy value resets to `{ disabled: true }`.
-     */
-    update(optionsOrFn) {
-      assertNotDestroyed();
-
-      if (isFunc(optionsOrFn)) {
-        const curr = cloneWhenObject(_options || {});
-        const newOptions = optionsOrFn(curr);
-        return setOptions(newOptions);
-      }
-
-      setOptions(optionsOrFn);
-    },
-
-    subscribe,
-
-    /* Detach from the currently bound element without destroying the store.
-     * The same store may then be rebound later. */
-    unbind() {
-      if (destroyed) return;
-      toggleAttributes({ forceRemove: true });
-      unregister();
-      activeDrag?.cleanup();
-      el = undefined;
-      publish({});
-    },
-
-    [DND_STORE]: true,
-    [DROPPABLE]: true,
-  };
 }
 
 /* Use a shared callback or select the callback for this drag type. */

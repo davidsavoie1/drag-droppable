@@ -12,13 +12,13 @@ import { cloneWhenObject, isFunc } from "./functions.js";
  * is being dragged. Snapshots stay current even without external subscribers.
  */
 export default function dragDroppable(options) {
-  let destroyed = false;
-  let subscribers = new Set();
   let _options = {};
-  let state = {};
-
+  let destroyed = false;
+  let onChange;
   let dragStore = draggable();
   let dropStore = droppable();
+  let state = {};
+  let subscribers = new Set();
 
   const unsubscribe = initSubscription();
 
@@ -36,6 +36,7 @@ export default function dragDroppable(options) {
     /* Fully tear down the controller. This is terminal for the current
      * store instance. */
     destroy() {
+      if (destroyed) return;
       destroyed = true;
       try {
         dragStore.destroy();
@@ -43,6 +44,7 @@ export default function dragDroppable(options) {
         try {
           dropStore.destroy();
         } finally {
+          onChange = undefined;
           unsubscribeAll();
           unsubscribe();
         }
@@ -103,7 +105,14 @@ export default function dragDroppable(options) {
 
   function setOptions(newOptions) {
     assertNotDestroyed();
-    _options = newOptions || { disabled: true };
+    const previousOnChange = onChange;
+    _options = newOptions ? { ...newOptions } : { disabled: true };
+    const currentOptions = _options;
+    onChange = isFunc(_options.onChange) ? _options.onChange : undefined;
+    if (onChange !== previousOnChange) onChange?.(state);
+
+    /* A notification may replace options or destroy the controller. */
+    if (destroyed || _options !== currentOptions) return;
     const {
       allowSelfDrop = false,
       attributesPrefix,
@@ -148,7 +157,7 @@ export default function dragDroppable(options) {
       touch,
     });
 
-    if (destroyed) return;
+    if (destroyed || _options !== currentOptions) return;
     dropStore.update({
       ...commonProps,
       [DRAG_SOURCE]: allowSelfDrop ? undefined : dragStore[DRAG_SOURCE],
@@ -165,14 +174,12 @@ export default function dragDroppable(options) {
   function initSubscription() {
     const unsubDrag = dragStore.subscribe((dragState) => {
       const dropState = dropStore.getSnapshot();
-      state = { ...dropState, ...dragState };
-      publish();
+      publish({ ...dropState, ...dragState });
     });
 
     const unsubDrop = dropStore.subscribe((dropState) => {
       const dragState = dragStore.getSnapshot();
-      state = { ...dropState, ...dragState };
-      publish();
+      publish({ ...dropState, ...dragState });
     });
 
     return function unsubscribe() {
@@ -181,7 +188,12 @@ export default function dragDroppable(options) {
     };
   }
 
-  function publish() {
+  function publish(newState) {
+    const keys = new Set([...Object.keys(state), ...Object.keys(newState)]);
+    if ([...keys].every((key) => Object.is(state[key], newState[key]))) return;
+
+    state = newState;
+    onChange?.(state);
     subscribers.forEach((sub) => sub(state));
   }
 
