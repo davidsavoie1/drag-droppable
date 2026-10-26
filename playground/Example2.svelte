@@ -40,7 +40,7 @@
     {
       namespace: "david",
       types: ["foo", "bar", "baz"],
-      // unless: { foo: (data) => data !== 42 },
+      // unless: { foo: ({ drag }) => drag !== 42 },
     },
   ];
 

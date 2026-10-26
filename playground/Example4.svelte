@@ -24,7 +24,7 @@
   use:dndDrop={{
     type: "food",
     target: ".mouth",
-    onDrop: ({ dragged: food }) => (lastMeal = food.name),
+    onDrop: ({ drag: food }) => (lastMeal = food.name),
   }}
 >
   <h3>Mia</h3>

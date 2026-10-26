@@ -6,23 +6,26 @@
   let babies = $state(Array.from({ length: 5 }, (_, idx) => `Baby ${idx + 1}`));
 </script>
 
-{#each babies as baby (baby)}
+{#each babies as baby, index (baby)}
   <div
     use:dnd={{
       attributesPrefix: "foo",
       type: "baby",
-      data: baby,
+      data: { baby, index },
       bottomTopThreshold: 0.2,
-      onDrop({ bottom, dragged, drop, top }) {
+      unless: ({ bottom, drag, drop, top }) =>
+        (bottom && drop.index + 1 === drag.index) ||
+        (top && drop.index - 1 === drag.index),
+      onDrop({ bottom, drag, drop, top }) {
         // @ts-ignore
-        const from = babies.indexOf(dragged);
-        const to = babies.indexOf(drop);
+        const from = babies.indexOf(drag.baby);
+        const to = babies.indexOf(drop.baby);
 
         if (top || bottom) {
           babies.splice(from, 1);
-          const insertion = babies.indexOf(drop) + (bottom ? 1 : 0);
+          const insertion = babies.indexOf(drop.baby) + (bottom ? 1 : 0);
           // @ts-ignore
-          babies.splice(insertion, 0, dragged);
+          babies.splice(insertion, 0, drag.baby);
         } else {
           [babies[from], babies[to]] = [babies[to], babies[from]];
         }

@@ -93,3 +93,9 @@ accepting, including changes to callbacks, data, predicates, or equivalent type
 lists. A changed or newly accepting target needs a new `dragover` before dropping.
 Tests also cover option updates caused by store subscribers and cleanup initiated
 inside drop callbacks.
+
+Acceptance predicates receive one `{ drag, drop, type, namespace, ...position }`
+object. Hover events re-evaluate only their target, including initially refused
+targets and repeated events at identical coordinates. Drop validates current data
+and final position before either callback runs. These checks cover both `when`
+and `unless`, recovery at drop, and the public `drag` field in snapshots.

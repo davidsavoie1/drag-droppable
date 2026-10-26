@@ -37,7 +37,7 @@ The core has no dependencies, only a few kB of modern Javascript. Optional React
 
 ## Typical usage
 
-The following example showcases a baby (a drop target element) and a variety of things it could bring to its mouth (drag elements). Data involved in the process allow deciding what can go in the mouth or not. Styling these interactions is left to the app code. No HTML mutation will actually move anything around permanently.
+The following example showcases a baby (a drop target element) and a variety of things it could bring to its mouth (dragged elements). Data involved in the process allow deciding what can go in the mouth or not. Styling these interactions is left to the app code. No HTML mutation will actually move anything around permanently.
 
 ```js
 import { dndDrag, dndDrop } from "drag-droppable";
@@ -56,12 +56,12 @@ dndDrop(babyMouthEl, {
   /* Drop can be completely disabled */
   disabled: babySleeps,
 
-  /* Drop can be accepted conditionally based on drag element */
-  when: (food) => food.tastes.includes("sweet"),
-  unless: (food) => food.texture === "solid",
+  /* Drop can be accepted conditionally based on dragged element */
+  when: ({ drag: food }) => food.tastes.includes("sweet"),
+  unless: ({ drag: food }) => food.texture === "solid",
 
   /* Do something after drop */
-  onDrop({ dragged: food }) {
+  onDrop({ drag: food }) {
     eatFood(food);
   },
 });
@@ -99,7 +99,7 @@ In both cases, the function receives the same arguments. With the combined `dnd`
 ```js
 onDrop(
   ({
-    dragged, // Dragged data.
+    drag, // Dragged data.
     drop, // Drop data.
     namespace, // Namespace of drag-and-drop.
     type, // Dragged element type.
@@ -155,7 +155,7 @@ const {
 
 **`type`**: Type of draggable element. Only droppables that include it in their `types` will react to it.
 
-**`data`**: Data the dragged element carries with it. Passed as the first argument of `unless` and `when`, and as `dragged` in the `onDrop` callback argument.
+**`data`**: Data the dragged element carries with it. Available as `drag` in the single argument of `unless`, `when`, and `onDrop`, and in the subscribed target state.
 
 **`disabled`**: Disabled draggable element cannot be dragged.
 
@@ -226,7 +226,7 @@ const {
 
 **`type`**: Shorthand when accepting a single type.
 
-**`data`**: Data associated with the drop element. Available as `drop` in the second argument of `when` and `unless`, in the `onDrop` callback argument, and in the subscribed state.
+**`data`**: Data associated with the drop element. Available as `drop` in the single argument of `when` and `unless`, in the `onDrop` callback argument, and in the subscribed state.
 
 **`disabled`**: Disabled droppable element cannot accept drops.
 
@@ -234,17 +234,17 @@ const {
 
 **`onDrop({ ...onDropArgs })`**: Function to execute when dragged element is dropped. See [`onDrop`](#ondrop).
 
-**`unless(draggedData, context)`**: Predicate function that prevents drop when true.
+**`unless({ drag, drop, type, namespace, ...position })`**: Predicate function that prevents drop when true.
 
-**`when(draggedData, context)`**: Predicate function that allows drop only when true.
+**`when({ drag, drop, type, namespace, ...position })`**: Predicate function that allows drop only when true.
 
-Both receive the dragged data first, then a context object containing `{ dragged, drop, namespace, type }`. For example:
+Both receive one object containing `{ drag, drop, type, namespace, ...position }`. Position fields (`x`, `y`, `dx`, `dy`, `left`, `right`, `top`, `bottom`) are available during hover and drop when the target has a usable rectangle. For example:
 
 ```js
-when: (food, { drop: baby }) => baby.hunger > 0 && food.texture === "smooth";
+when: ({ drag: food, drop: baby }) => baby.hunger > 0 && food.texture === "smooth";
 ```
 
-For matching types and namespaces, predicates are evaluated at the start of the drag or when the droppable is registered or updated during a drag. They are not continuously re-evaluated during hover.
+For matching types and namespaces, predicates are evaluated at the start of the drag or when the droppable is registered or updated during a drag. During `dragenter`, `dragover`, and `drop`, only the hovered target is re-evaluated with the current position, even if it was initially refused. A drop must pass the predicates again before either drop callback runs. No polling is performed while the pointer is stationary.
 
 Each of them can also be defined as an object with a different handler for each type.
 
@@ -254,11 +254,11 @@ import { dndDrop } from "drag-droppable";
 dndDrop(HTMLElement, {
   types: ["food", "toy"],
   when: {
-    food: (food) => food.texture === "smooth",
-    toy: (toy) => toy.size < 42,
+    food: ({ drag: food }) => food.texture === "smooth",
+    toy: ({ drag: toy }) => toy.size < 42,
   },
   onDrop: {
-    food: ({ dragged }) => eatFood(dragged),
+    food: ({ drag }) => eatFood(drag),
     toy: spitOut, // Receives complete dnd data, including positionning
   },
 });
@@ -302,7 +302,7 @@ Use `dnd(element, options)` when the same element is both a drag source and a dr
   use:dnd={{
     type: "baby",
     data: { name: "Mia" },
-    onDrop: ({ dragged, drop }) => console.log(dragged, "visits", drop),
+    onDrop: ({ drag, drop }) => console.log(drag, "visits", drop),
   }}
 >
   Baby Mia
@@ -365,7 +365,7 @@ dropStore.subscribe(
   ({
     canDrop, // Is relevant dragged element over drop element?
     concerned, // Is relevant element being dragged?
-    dragged, // Dragged data.
+    drag, // Dragged data.
     dragging, // Is a matching drag in progress?
     drop, // Drop data.
     type, // Dragged element type.
@@ -378,7 +378,7 @@ dropStore.subscribe(
 );
 ```
 
-`dragDroppable` combines both states. **`dragging` always describes this element being dragged**, and `pointerType` comes from its source role. `concerned`, `unconcerned`, `canDrop`, `dragged`, `drop`, `type`, and position fields describe its target role. Receiving a drag from another element does not set `dragging` to true; use the target fields to react to incoming drags.
+`dragDroppable` combines both states. **`dragging` always describes this element being dragged**, and `pointerType` comes from its source role. `concerned`, `unconcerned`, `canDrop`, `drag`, `drop`, `type`, and position fields describe its target role. Receiving a drag from another element does not set `dragging` to true; use the target fields to react to incoming drags.
 
 ```js
 import { dnd, dragDroppable } from "drag-droppable";
@@ -688,8 +688,8 @@ export default function Dinner() {
   const { ref: babyRef, state } = useDroppable({
     type: "food",
     data: { hunger },
-    when: (_, { drop }) => drop.hunger > 0,
-    onDrop: ({ dragged: meal }) => {
+    when: ({ drop }) => drop.hunger > 0,
+    onDrop: ({ drag: meal }) => {
       setHunger((current) => Math.max(0, current - meal.quality));
       setSpoonfuls((current) => current - 1);
     },
@@ -743,8 +743,8 @@ const { ref: mealRef } = useDraggable(() => ({
 const { ref: babyRef, state: dropState } = useDroppable(() => ({
   type: "food",
   data: { hunger: hunger.value },
-  when: (_, { drop }) => drop.hunger > 0,
-  onDrop: ({ dragged: food }) => {
+  when: ({ drop }) => drop.hunger > 0,
+  onDrop: ({ drag: food }) => {
     hunger.value = Math.max(0, hunger.value - food.quality);
     spoonfuls.value -= 1;
   },
@@ -832,10 +832,10 @@ The parent updates the list, keeping each baby in a keyed row:
 
   let babies = $state(["Mia", "Leo", "Zoe"]);
 
-  function moveBaby({ bottom, dragged, drop }) {
-    const next = babies.filter((baby) => baby !== dragged);
+  function moveBaby({ bottom, drag, drop }) {
+    const next = babies.filter((baby) => baby !== drag);
     const index = next.indexOf(drop);
-    next.splice(index + (bottom ? 1 : 0), 0, dragged);
+    next.splice(index + (bottom ? 1 : 0), 0, drag);
     babies = next;
   }
 </script>
@@ -864,7 +864,7 @@ for (const nursery of ["upstairs", "downstairs"]) {
   dndDrop(basketEls[nursery], {
     namespace: nursery,
     type: "toy",
-    onDrop: ({ dragged: toy }) => putAway(nursery, toy),
+    onDrop: ({ drag: toy }) => putAway(nursery, toy),
   });
 }
 ```
@@ -888,7 +888,7 @@ const babyByName = Object.fromEntries(
     const drop = dndDrop(el, {
       data,
       type: "food",
-      when: (_, { drop: { hunger } }) => hunger > 0,
+      when: ({ drop: { hunger } }) => hunger > 0,
       onDrop: feedBaby,
     });
     return [data.name, drop];
@@ -909,11 +909,11 @@ const mealsByName = Object.fromEntries(
   }),
 );
 
-/* Both `dragged` and `drop` data are used in the `onDrop` callback.
+/* Both `drag` and `drop` data are used in the `onDrop` callback.
  * Note that callback could have been placed on either `dndDrag` or `dndDrop`. */
 function feedBaby({
   /* `draggedData` gives information about food quality */
-  dragged: { name: mealName, quality = 0 },
+  drag: { name: mealName, quality = 0 },
   /* `drop` data gives information to retrieve store */
   drop: { name: babyName },
 }) {
@@ -938,7 +938,7 @@ function feedBaby({
 
 `feedBaby` belongs to your application; the library doesn't impose any special way to manage interactions. It just provides the infrastructure to simplify data sharing.
 
-With Svelte, the same example can use reactive data directly. No controller lookup is needed: `dragged` and `drop` refer to the meal and baby objects from `$state`.
+With Svelte, the same example can use reactive data directly. No controller lookup is needed: `drag` and `drop` refer to the meal and baby objects from `$state`.
 
 ```svelte
 <script>
@@ -953,7 +953,7 @@ With Svelte, the same example can use reactive data directly. No controller look
     { name: "bad", quality: 1, spoonfuls: 10 },
   ]);
 
-  function feedBaby({ dragged: meal, drop: baby }) {
+  function feedBaby({ drag: meal, drop: baby }) {
     meal.spoonfuls -= 1;
     baby.hunger = Math.max(0, baby.hunger - meal.quality);
   }
@@ -976,7 +976,7 @@ With Svelte, the same example can use reactive data directly. No controller look
     use:dndDrop={{
       type: "food",
       data: baby,
-      when: (_, { drop }) => drop.hunger > 0,
+      when: ({ drop }) => drop.hunger > 0,
       onDrop: feedBaby,
     }}
   >
@@ -1022,7 +1022,7 @@ Svelte reacts to these mutations, updates the displayed values, and passes updat
   use:dndDrop={{
     type: "food",
     target: ".mouth",
-    onDrop: ({ dragged: food }) => (lastMeal = food.name),
+    onDrop: ({ drag: food }) => (lastMeal = food.name),
   }}
 >
   <h3>Mia</h3>
@@ -1056,8 +1056,8 @@ type Food = { name: string; quality: number };
 const baby = droppable<Baby, Food>({
   type: "food",
   data: { name: "Mia", hunger: 6 },
-  when: (food, { drop }) => drop.hunger > 0 && food.quality > 0,
-  onDrop: ({ dragged: food, drop }) => {
+  when: ({ drag: food, drop }) => drop.hunger > 0 && food.quality > 0,
+  onDrop: ({ drag: food, drop }) => {
     drop.hunger = Math.max(0, drop.hunger - food.quality);
   },
 });
@@ -1072,14 +1072,14 @@ const movingBaby = dragDroppable<Baby, Food>({
   type: "baby",
   types: ["food"],
   data: { name: "Mia", hunger: 6 },
-  onDrop: ({ dragged: food, drop: baby }) => {
+  onDrop: ({ drag: food, drop: baby }) => {
     baby.hunger = Math.max(0, baby.hunger - food.quality);
   },
 });
 
 const binding = dnd(babyEl, movingBaby);
 movingBaby.getSnapshot().dragging; // This baby is being dragged.
-movingBaby.getSnapshot().dragged?.quality; // Incoming Food data.
+movingBaby.getSnapshot().drag?.quality; // Incoming Food data.
 ```
 
 `DragDroppableOptions`, `DragDroppableState`, and `DragDroppableController` describe the combined API. `DnDOptions` remains available for the same flat configuration. Unspecified data types default to `unknown`. Types cannot enforce that independently configured drag sources and drop targets carry matching data; keep their `type` and `namespace` contracts consistent.

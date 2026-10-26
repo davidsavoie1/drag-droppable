@@ -37,7 +37,7 @@ export function getConfig(): {
 };
 
 export interface DragContext<Dragged = unknown, Drop = unknown> {
-  dragged: Dragged;
+  drag: Dragged;
   drop: Drop;
   namespace: string | null | undefined;
   type: string;
@@ -67,10 +67,9 @@ export type DropCallback<Dragged = unknown, Drop = unknown> = (
   event: DropEvent<Dragged, Drop>,
 ) => void;
 
-/** Acceptance is evaluated when joining a drag and whenever options are updated. */
+/** Acceptance is evaluated on joining, options updates, hover events and drop. */
 export type DropPredicate<Dragged = unknown, Drop = unknown> = (
-  dragged: Dragged,
-  context: DragContext<Dragged, Drop>,
+  context: DropEvent<Dragged, Drop>,
 ) => boolean;
 
 export type ByType<Callback> = Callback | Record<string, Callback | undefined>;
@@ -156,7 +155,7 @@ export interface DroppableState<Drop = unknown, Dragged = unknown>
 
 /**
  * Target state combined with source state. `dragging` refers to this element
- * being dragged; `dragged`, `drop`, `type`, and hover fields describe incoming drags.
+ * being dragged; `drag`, `drop`, `type`, and hover fields describe incoming drags.
  */
 export interface DragDroppableState<Data = unknown, Dragged = unknown>
   extends Omit<DroppableState<Data, Dragged>, "dragging">, DraggableState {}

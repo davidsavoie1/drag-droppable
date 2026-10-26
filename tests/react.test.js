@@ -91,7 +91,7 @@ function pair(t, settings = {}, props = {}) {
       {
         types: ["food"],
         data: { hunger },
-        when: (_, { drop }) => drop.hunger > 0,
+        when: ({ drop }) => drop.hunger > 0,
         onDrop,
       },
       settings,
@@ -177,7 +177,7 @@ test("committed props refresh acceptance and disabled sources", (t) => {
     target = useDroppable({
       type: "food",
       data: { hunger },
-      when: (_, { drop }) => drop.hunger > 0,
+      when: ({ drop }) => drop.hunger > 0,
     });
     return h(
       "section",
@@ -283,9 +283,9 @@ test("drop callbacks can update React application state without feedback loops",
     target = useDroppable({
       type: "food",
       data: { hunger },
-      when: (_, { drop }) => drop.hunger > 0,
-      onDrop: ({ dragged }) => {
-        setHunger((current) => Math.max(0, current - dragged.quality));
+      when: ({ drop }) => drop.hunger > 0,
+      onDrop: ({ drag }) => {
+        setHunger((current) => Math.max(0, current - drag.quality));
         setSpoonfuls((current) => current - 1);
       },
     });

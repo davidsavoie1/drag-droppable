@@ -197,7 +197,7 @@ test("accepted drop supplies payload and lower-half positioning", (t) => {
   t.after(end);
   send(element, "dragover", { clientY: 75 });
   send(element, "drop", { clientY: 75 });
-  assert.equal(received.dragged, data);
+  assert.equal(received.drag, data);
   assert.equal(received.bottom, true);
   assert.equal(received.dy, 0.75);
 });

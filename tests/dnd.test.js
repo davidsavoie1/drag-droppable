@@ -53,7 +53,7 @@ test("combined bindings share data and call onDrop only on the receiving element
   send(source.element, "dragend");
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].dragged, sourceData);
+  assert.equal(calls[0].drag, sourceData);
   assert.equal(calls[0].drop, targetData);
   assert.equal(calls[0].bottom, true);
   assert.equal(calls[0].namespace, "nursery");
@@ -68,13 +68,13 @@ test("combined type is emitted while types and callback maps control accepted dr
     types: ["toy", "food"],
     data: "Mia",
     onDrop: {
-      toy: ({ dragged, drop }) => calls.push(["toy", dragged, drop]),
-      food: ({ dragged, drop }) => calls.push(["food", dragged, drop]),
+      toy: ({ drag, drop }) => calls.push(["toy", drag, drop]),
+      food: ({ drag, drop }) => calls.push(["food", drag, drop]),
     },
   });
   const target = bind(t, droppable, {
     type: "baby",
-    onDrop: ({ dragged }) => calls.push(["baby", dragged]),
+    onDrop: ({ drag }) => calls.push(["baby", drag]),
   });
   send(both.element, "dragstart");
   flushFrames();
@@ -250,7 +250,7 @@ test("combined controllers reject their own drag and accept identical data from 
   assert.equal(target.element.hasAttribute("data-dnd-can"), true);
   send(target.element, "drop");
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].dragged, data);
+  assert.equal(calls[0].drag, data);
   assert.equal(calls[0].drop, data);
   send(source.element, "dragend");
 });

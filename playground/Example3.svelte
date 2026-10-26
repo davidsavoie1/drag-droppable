@@ -13,7 +13,7 @@
 
   let timeout = $state();
 
-  function feedBaby({ dragged: meal, drop: baby }) {
+  function feedBaby({ drag: meal, drop: baby }) {
     meal.spoonfuls -= 1;
     baby.hunger = Math.max(0, baby.hunger - meal.quality);
   }
@@ -55,8 +55,8 @@
       type: "food",
       data: baby,
       disabled: baby.sleeping,
-      // unless: (_, { drop: baby }) => baby.sleeping,
-      when: (_, { drop }) => drop.hunger > 0,
+      // unless: ({ drop: baby }) => baby.sleeping,
+      when: ({ drop }) => drop.hunger > 0,
       onDrop: feedBaby,
     }}
   >

@@ -101,7 +101,7 @@ async function pair(t, settings = {}) {
       () => ({
         types: ["food"],
         data: { hunger: config.hunger },
-        when: (_, { drop }) => drop.hunger > 0,
+        when: ({ drop }) => drop.hunger > 0,
         onDrop: onDrop.value,
       }),
       settings,
@@ -284,9 +284,9 @@ test("Vue drop callbacks can update reactive application data", async (t) => {
     target = useDroppable(() => ({
       type: "food",
       data: { hunger: hunger.value },
-      when: (_, { drop }) => drop.hunger > 0,
-      onDrop: ({ dragged }) => {
-        hunger.value -= dragged.quality;
+      when: ({ drop }) => drop.hunger > 0,
+      onDrop: ({ drag }) => {
+        hunger.value -= drag.quality;
         spoonfuls.value--;
       },
     }));

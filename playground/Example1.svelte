@@ -26,8 +26,8 @@
     {
       name: "mouth",
       types: ["food"],
-      when: (food) => food.texture === "solid",
-      unless: (food) => food.tastes?.includes("tart"),
+      when: ({ drag: food }) => food.texture === "solid",
+      unless: ({ drag: food }) => food.tastes?.includes("tart"),
     },
   ];
 </script>

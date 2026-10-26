@@ -39,13 +39,13 @@ test("a target added after drag start can accept a drop and is cleaned at drag e
   });
   const snapshot = observe(target.controller);
   assert.equal(snapshot.state.dragging, true);
-  assert.equal(snapshot.state.dragged, food);
+  assert.equal(snapshot.state.drag, food);
   assert.equal(snapshot.state.canDrop, false);
   send(target.element, "drop");
   assert.equal(received, undefined);
   send(target.element, "dragover");
   send(target.element, "drop");
-  assert.equal(received.dragged, food);
+  assert.equal(received.drag, food);
   assert.equal(received.drop, baby);
   send(source.element, "dragend");
   assert.deepEqual(snapshot.state, {});
@@ -116,8 +116,8 @@ test("data and predicate updates re-evaluate acceptance using both payloads", (t
     type: "food",
     namespace: "A",
     data: { hunger: 0 },
-    when: (dragged, args) => {
-      assert.equal(dragged, food);
+    when: (args) => {
+      assert.equal(args.drag, food);
       context = args;
       return args.drop.hunger > 0;
     },
@@ -128,7 +128,7 @@ test("data and predicate updates re-evaluate acceptance using both payloads", (t
   const baby = { hunger: 6 };
   target.controller.update((current) => ({ ...current, data: baby }));
   assert.deepEqual(context, {
-    dragged: food,
+    drag: food,
     drop: baby,
     namespace: "A",
     type: "food",
@@ -273,7 +273,7 @@ for (const change of [
     const target = bind(t, droppable, {
       type: "food",
       data: baby,
-      when: (_, { drop }) => drop.hunger > 0,
+      when: ({ drop }) => drop.hunger > 0,
       onDrop: (args) => {
         received = args;
       },
@@ -309,7 +309,7 @@ for (const change of [
       );
     }
     send(target.element, "drop", { clientX: 75, clientY: 75 });
-    assert.equal(received.dragged, food);
+    assert.equal(received.drag, food);
     assert.equal(received.drop, nextBaby);
     send(source.element, "dragend");
     assert.deepEqual(snapshot.state, {});
@@ -322,7 +322,7 @@ test("a target becoming refused clears hover, and becoming accepted requires ano
   const target = bind(t, droppable, {
     type: "food",
     data: { hunger: 6 },
-    when: (_, { drop }) => drop.hunger > 0,
+    when: ({ drop }) => drop.hunger > 0,
     onDrop: () => {
       drops++;
     },
@@ -545,3 +545,84 @@ for (const coordinate of [25, 75]) {
     send(source.element, "dragend");
   });
 }
+
+for (const predicate of ["when", "unless"]) {
+  test(`${predicate} receives one context and rechecks only the hovered target, including refused targets`, (t) => {
+    const food = { quality: 2 };
+    const baby = { hunger: 0 };
+    const calls = [];
+    let otherCalls = 0;
+    let drops = 0;
+    const target = bind(t, droppable, {
+      type: "food",
+      namespace: "A",
+      data: baby,
+      [predicate]: { food: (...args) => {
+        assert.equal(args.length, 1);
+        const context = args[0];
+        assert.equal(context.drag, food);
+        assert.equal(context.drop, baby);
+        assert.equal(context.type, "food");
+        assert.equal(context.namespace, "A");
+        assert.equal(Object.hasOwn(context, "dragged"), false);
+        calls.push(context);
+        const accepted = baby.hunger > 0 && context.right === true;
+        return predicate === "when" ? accepted : !accepted;
+      } },
+      onDrop: () => drops++,
+    });
+    bind(t, droppable, {
+      type: "food", namespace: "A",
+      [predicate]: () => { otherCalls++; return predicate === "when"; },
+    });
+    const source = start(t, { namespace: "A", data: food });
+    assert.equal(target.controller.getSnapshot().unconcerned, true);
+    assert.equal(calls[0].x, undefined);
+    const initialOtherCalls = otherCalls;
+    send(target.element, "dragover", { clientX: 75, clientY: 0 });
+    assert.equal(target.controller.getSnapshot().canDrop, false);
+    baby.hunger = 3;
+    // Same coordinates, no options update: the initially refused target recovers.
+    send(target.element, "dragover", { clientX: 75, clientY: 0 });
+    assert.equal(target.controller.getSnapshot().canDrop, true);
+    assert.equal(target.element.hasAttribute("data-dnd-can"), true);
+    assert.equal(target.element.style.cursor, "");
+    assert.equal(calls.at(-1).dx, 0.75);
+    assert.equal(calls.at(-1).top, true);
+    baby.hunger = 0;
+    send(target.element, "dragover", { clientX: 75, clientY: 0 });
+    assert.equal(target.controller.getSnapshot().canDrop, false);
+    assert.equal(target.element.hasAttribute("data-dnd-can"), false);
+    // A refused hover can also recover at drop itself.
+    baby.hunger = 3;
+    send(target.element, "drop", { clientX: 75, clientY: 0 });
+    assert.equal(drops, 1);
+    assert.equal(otherCalls, initialOtherCalls);
+    assert.equal(target.controller.getSnapshot().drag, food);
+    assert.equal(Object.hasOwn(target.controller.getSnapshot(), "dragged"), false);
+    send(source.element, "dragend");
+  });
+}
+
+test("drop rechecks external data and final position before invoking either callback", (t) => {
+  let allowed = true;
+  const calls = [];
+  const target = bind(t, droppable, {
+    type: "food",
+    when: ({ right }) => allowed && right !== false,
+    onDrop: () => calls.push("target"),
+  });
+  const source = start(t, { onDrop: () => calls.push("source") });
+  send(target.element, "dragover", { clientX: 75 });
+  allowed = false;
+  send(target.element, "drop", { clientX: 75 });
+  assert.deepEqual(calls, []);
+  allowed = true;
+  send(target.element, "dragover", { clientX: 75 });
+  send(target.element, "drop", { clientX: 0 });
+  assert.deepEqual(calls, []);
+  send(target.element, "dragover", { clientX: 75 });
+  send(target.element, "drop", { clientX: 75 });
+  assert.deepEqual(calls, ["target", "source"]);
+  send(source.element, "dragend");
+});

@@ -13,8 +13,6 @@ import {
   noop,
 } from "./functions.js";
 
-const EVENT_TYPES_TO_BLOCK = ["dragenter", "dragleave", "dragover", "drop"];
-
 /**
  * Create a drop target controller compatible with the Svelte store contract.
  * Bind it with `bind(element)` or `use:dndDrop={store}`.
@@ -235,9 +233,9 @@ export default function droppable(options) {
     let concerned;
     let handlersSet = false;
     let dragoverEl;
-    let lastPositionning = {};
     let cleanupHandlers;
     let cleaned = false;
+    let restoreCursor = "";
 
     const participation = { type, session, refresh, cleanup };
     activeDrag = participation;
@@ -252,7 +250,7 @@ export default function droppable(options) {
       resetState();
     }
 
-    function refresh() {
+    function refresh(position) {
       const options = _options;
       const {
         attributesPrefix = getConfig().attributesPrefix,
@@ -261,13 +259,14 @@ export default function droppable(options) {
         when,
         unless,
       } = options;
-      const nextArgs = { dragged: draggedData, drop, namespace, type };
+      const nextArgs = { drag: draggedData, drop, namespace, type };
+      const predicateArgs = { ...nextArgs, ...position };
       const nextWhen = dipatchByType(when, type);
       const nextUnless = dipatchByType(unless, type);
       const nextConcerned = !!(
         (!options[DRAG_SOURCE] || options[DRAG_SOURCE] !== session.source) &&
-        (!nextWhen || nextWhen(draggedData, nextArgs)) &&
-        (!nextUnless || !nextUnless(draggedData, nextArgs))
+        (!nextWhen || nextWhen(predicateArgs)) &&
+        (!nextUnless || !nextUnless(predicateArgs))
       );
 
       /* Predicates may synchronously update or detach this controller. */
@@ -275,8 +274,7 @@ export default function droppable(options) {
 
       const nextTarget = getTarget();
       const preserveHover = concerned && nextConcerned && target === nextTarget;
-      const replaceHandlers =
-        target !== nextTarget || concerned !== nextConcerned;
+      const replaceHandlers = target !== nextTarget;
 
       if (replaceHandlers) cleanupHandlers?.();
       if (state.attributesPrefix !== attributesPrefix) {
@@ -289,46 +287,30 @@ export default function droppable(options) {
 
       if (replaceHandlers) {
         dragoverEl = undefined;
-        lastPositionning = {};
-        if (concerned) {
-          setHandlers();
-          cleanupHandlers = unsetHandlers;
-        } else {
-          cleanupHandlers = handleUnconcerned();
-        }
+        setHandlers();
+        const prevCursor = target.style.cursor || "";
+        cleanupHandlers = () => {
+          unsetHandlers();
+          target.style.cursor = prevCursor;
+        };
+        restoreCursor = prevCursor;
+      }
+
+      target.style.cursor = concerned ? restoreCursor : "not-allowed";
+      if (!preserveHover && !position) {
+        dragoverEl = undefined;
       }
 
       publish({
         ...(preserveHover ? state : { canDrop: false }),
+        ...(position ? { canDrop: concerned, ...position } : {}),
         ...baseArgs,
         attributesPrefix,
         concerned,
         dragging: true,
         unconcerned: !concerned,
       });
-    }
-
-    function handleUnconcerned() {
-      const prevCursor = target?.style?.cursor || "";
-
-      target.style.cursor = "not-allowed";
-
-      function blockEvent(e) {
-        e.dataTransfer.dropEffect = "none";
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      EVENT_TYPES_TO_BLOCK.forEach((eventType) =>
-        target.addEventListener(eventType, blockEvent),
-      );
-
-      return () => {
-        EVENT_TYPES_TO_BLOCK.forEach((eventType) =>
-          target.removeEventListener(eventType, blockEvent),
-        );
-        target.style.cursor = prevCursor;
-      };
+      return activeDrag === participation && _options === options;
     }
 
     function resetState() {
@@ -336,19 +318,8 @@ export default function droppable(options) {
       publish({});
     }
 
-    function setDragoverEl(overEl, positionning) {
-      /* Prevent processing if nothing significant changed */
-      if (!positionningChanged(positionning) && dragoverEl === overEl) return;
-
-      lastPositionning = positionning;
-      dragoverEl = overEl;
-
-      publish({ ...state, canDrop: true, ...positionning });
-    }
-
     function unsetDragoverEl() {
       dragoverEl = null;
-      lastPositionning = {};
       const {
         x,
         y,
@@ -396,17 +367,14 @@ export default function droppable(options) {
       };
     }
 
-    function positionningChanged(positionning) {
-      /* A threshold change can alter side flags without changing coordinates. */
-      return ["x", "y", "dx", "dy", "left", "right", "top", "bottom"].some(
-        (k) => positionning?.[k] !== lastPositionning?.[k],
-      );
-    }
-
     function dragover(e) {
       e.stopPropagation();
       e.preventDefault();
-      setDragoverEl(e.target, computePositionning(e));
+      const eventTarget = target;
+      const position = computePositionning(e);
+      if (!refresh(position) || target !== eventTarget) return;
+      if (!concerned && e.dataTransfer) e.dataTransfer.dropEffect = "none";
+      dragoverEl = e.target;
     }
 
     function dragleave(e) {
@@ -417,13 +385,22 @@ export default function droppable(options) {
     function drop(e) {
       if (e.target !== dragoverEl) return;
 
-      const onDrop = dipatchByType(_options.onDrop, type);
       const dropTarget = target;
+      const position = computePositionning(e);
+      if (!refresh(position) || target !== dropTarget) return;
+      if (!concerned) {
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+        e.stopPropagation();
+        e.preventDefault();
+        unsetDragoverEl();
+        return;
+      }
+      const onDrop = dipatchByType(_options.onDrop, type);
 
       if (onDrop || draggedOnDrop) {
         const args = {
           ...baseArgs,
-          ...computePositionning(e),
+          ...position,
         };
 
         e.stopPropagation();
