@@ -1,5 +1,5 @@
 import { getConfig } from "./configure.js";
-import { DND_STORE, DROPPABLE } from "./constants.js";
+import { DND_STORE, DROPPABLE, DRAG_SOURCE } from "./constants.js";
 import {
   registerDragCleanup,
   registerDragListeners,
@@ -265,6 +265,7 @@ export default function droppable(options) {
       const nextWhen = dipatchByType(when, type);
       const nextUnless = dipatchByType(unless, type);
       const nextConcerned = !!(
+        (!options[DRAG_SOURCE] || options[DRAG_SOURCE] !== session.source) &&
         (!nextWhen || nextWhen(draggedData, nextArgs)) &&
         (!nextUnless || !nextUnless(draggedData, nextArgs))
       );

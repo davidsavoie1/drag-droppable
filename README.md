@@ -302,7 +302,6 @@ Use `dnd(element, options)` when the same element is both a drag source and a dr
   use:dnd={{
     type: "baby",
     data: { name: "Mia" },
-    unless: (dragged, { drop }) => dragged === drop,
     onDrop: ({ dragged, drop }) => console.log(dragged, "visits", drop),
   }}
 >
@@ -313,6 +312,8 @@ Use `dnd(element, options)` when the same element is both a drag source and a dr
 The flat configuration combines draggable and droppable options. `data`, `namespace`, `disabled`, and `attributesPrefix` apply to both roles. `type` defines the emitted type and, by default, the accepted type. Set `types` to override accepted types independently: `{ type: "baby", types: ["baby", "toy"] }` emits `"baby"` and accepts `"baby"` or `"toy"`.
 
 **`onDrop` handles drops only**, including callbacks defined by type. `onDrag` and `onDragEnd` keep their usual source behavior.
+
+Self-drops for `draggable` and `droppable` are rejected by default. Set `allowSelfDrop: true` to permit them.
 
 `dnd` accepts options or an existing `dragDroppable` store and returns `update()` and `destroy()`. With options, it creates and owns a combined store. Updates follow the same replacement and updater-function rules as the other bindings; `disabled` disables both roles.
 
@@ -393,20 +394,6 @@ const unsubscribe = babyStore.subscribe(({ dragging, canDrop }) => {
 unsubscribe();
 binding.destroy();
 ```
-
-The snapshot is the same state object delivered to subscribers:
-
-```js
-const current = dropStore.getSnapshot();
-console.log(current.canDrop);
-
-/* Reading does not create a new snapshot. */
-console.log(current === dropStore.getSnapshot()); // true
-```
-
-Together, `subscribe` and `getSnapshot` provide the client-side store interface used by React's `useSyncExternalStore`. React is not a dependency of the library.
-
-Snapshots are not frozen or deeply cloned. Application data in `dragged` and `drop` retains its original references; mutating that data alone does not notify subscribers. Update configuration through `update()` and let the library manage the store's state fields.
 
 ## Dynamic configuration
 
@@ -810,7 +797,6 @@ In this Svelte example, each row owns a combined store so it can be moved and re
     babyStore.update({
       type: "baby",
       data: baby,
-      unless: (dragged) => dragged === baby,
       onDrop: onMove,
     });
   });
@@ -818,8 +804,8 @@ In this Svelte example, each row owns a combined store so it can be moved and re
 
 <div
   use:dnd={babyStore}
-  class:before={$babyStore.canDrop && $babyStore.top}
-  class:after={$babyStore.canDrop && $babyStore.bottom}
+  class:before={$babyStore.top}
+  class:after={$babyStore.bottom}
 >
   {baby}
 </div>

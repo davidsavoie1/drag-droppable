@@ -1,5 +1,5 @@
 import { getConfig } from "./configure.js";
-import { DND_STORE, DRAGGABLE } from "./constants.js";
+import { DND_STORE, DRAGGABLE, DRAG_SOURCE } from "./constants.js";
 import { publishDrag } from "./dndSubs.js";
 import {
   cloneWhenObject,
@@ -24,6 +24,8 @@ import {
  * See the README for options and callback signatures.
  */
 export default function draggable(options = {}) {
+  const sourceIdentity = {};
+
   let el;
   let destroyed = false;
   let subscribers = new Set();
@@ -197,7 +199,13 @@ export default function draggable(options = {}) {
       /* Defer target notification until the next frame so reactive updates can run. */
       pendingDragFrame = requestAnimationFrame(() => {
         pendingDragFrame = undefined;
-        const cleanup = publishDrag({ namespace, type, data, onDrop });
+        const cleanup = publishDrag({
+          namespace,
+          type,
+          data,
+          onDrop,
+          source: sourceIdentity,
+        });
 
         /* A target subscriber may end or replace this session synchronously
          * during publication, before its cleanup becomes available. */
@@ -406,6 +414,7 @@ export default function draggable(options = {}) {
       publish({ dragging: false });
     },
 
+    [DRAG_SOURCE]: sourceIdentity,
     [DND_STORE]: true,
     [DRAGGABLE]: true,
   };

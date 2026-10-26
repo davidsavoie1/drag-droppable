@@ -1,4 +1,4 @@
-import { DND_STORE, DRAGDROPPABLE } from "./constants.js";
+import { DND_STORE, DRAGDROPPABLE, DRAG_SOURCE } from "./constants.js";
 import draggable from "./draggable.js";
 import droppable from "./droppable.js";
 import { cloneWhenObject, isFunc } from "./functions.js";
@@ -7,6 +7,7 @@ import { cloneWhenObject, isFunc } from "./functions.js";
  * Create a combined source and target controller compatible with the Svelte store
  * contract. Bind it with `bind(element)` or `use:dnd={store}`.
  * Flat options share data across both roles; onDrop handles received drops only.
+ * Self-drops are rejected by source identity unless allowSelfDrop is true.
  * State combines target fields with source fields, so dragging means this element
  * is being dragged. Snapshots stay current even without external subscribers.
  */
@@ -104,6 +105,7 @@ export default function dragDroppable(options) {
     assertNotDestroyed();
     _options = newOptions || { disabled: true };
     const {
+      allowSelfDrop = false,
       attributesPrefix,
       bottomTopThreshold,
       data,
@@ -149,6 +151,7 @@ export default function dragDroppable(options) {
     if (destroyed) return;
     dropStore.update({
       ...commonProps,
+      [DRAG_SOURCE]: allowSelfDrop ? undefined : dragStore[DRAG_SOURCE],
       bottomTopThreshold,
       leftRightThreshold,
       onDrop /* Only called on received drops. */,

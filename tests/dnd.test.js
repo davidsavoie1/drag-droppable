@@ -7,6 +7,7 @@ import {
   dndDrag,
   dndDrop,
   draggable,
+  dragDroppable,
   droppable,
 } from "../src/index.js";
 
@@ -224,3 +225,88 @@ for (const action of [dndDrag, dndDrop]) {
     assert.doesNotThrow(() => controller.bind(new TestElement()));
   });
 }
+
+test("combined controllers reject their own drag and accept identical data from others", (t) => {
+  const data = { name: "Mia" };
+  const calls = [];
+  const source = combined(t, {
+    type: "baby",
+    data,
+    onDrop: (args) => calls.push(args),
+  });
+  const target = combined(t, {
+    type: "baby",
+    data,
+    onDrop: (args) => calls.push(args),
+  });
+  send(source.element, "dragstart");
+  flushFrames();
+  assert.equal(send(source.element, "dragover").defaultPrevented, true);
+  assert.equal(source.element.hasAttribute("data-dnd-can"), false);
+  assert.equal(source.element.hasAttribute("data-dnd-unconcerned"), true);
+  send(source.element, "drop");
+  assert.equal(calls.length, 0);
+  send(target.element, "dragover");
+  assert.equal(target.element.hasAttribute("data-dnd-can"), true);
+  send(target.element, "drop");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].dragged, data);
+  assert.equal(calls[0].drop, data);
+  send(source.element, "dragend");
+});
+
+for (const allowed of [true, false]) {
+  test(`self-drop opt-in still applies acceptance predicates (${allowed})`, (t) => {
+    let calls = 0;
+    const { element } = combined(t, {
+      type: "baby",
+      allowSelfDrop: true,
+      when: { baby: () => allowed },
+      onDrop: { baby: () => calls++ },
+    });
+    send(element, "dragstart");
+    flushFrames();
+    send(element, "dragover");
+    send(element, "drop");
+    assert.equal(calls, allowed ? 1 : 0);
+    send(element, "dragend");
+  });
+}
+
+test("allowSelfDrop can change during a drag and resets with replacement options", (t) => {
+  let calls = 0;
+  const element = new TestElement();
+  const store = dragDroppable({ type: "baby", onDrop: () => calls++ });
+  t.after(store.destroy);
+  store.bind(element);
+  send(element, "dragstart");
+  flushFrames();
+  assert.equal(store.getSnapshot().concerned, false);
+  store.update((current) => ({ ...current, allowSelfDrop: true }));
+  send(element, "dragover");
+  assert.equal(store.getSnapshot().canDrop, true);
+  store.update((current) => ({ ...current, allowSelfDrop: false }));
+  assert.equal(store.getSnapshot().canDrop, false);
+  send(element, "drop");
+  assert.equal(calls, 0);
+  store.update((current) => ({ ...current, allowSelfDrop: true }));
+  send(element, "dragover");
+  send(element, "drop");
+  assert.equal(calls, 1);
+  store.update({ type: "baby" });
+  assert.equal(store.getSnapshot().concerned, false);
+  send(element, "dragend");
+});
+
+test("separate source and target controllers still allow a drop on the same element", (t) => {
+  const element = new TestElement();
+  let calls = 0;
+  bind(t, draggable, { type: "baby" }, element);
+  bind(t, droppable, { type: "baby", onDrop: () => calls++ }, element);
+  send(element, "dragstart");
+  flushFrames();
+  send(element, "dragover");
+  send(element, "drop");
+  assert.equal(calls, 1);
+  send(element, "dragend");
+});

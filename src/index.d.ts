@@ -123,7 +123,10 @@ export type DnDOptions<Data = unknown, Dragged = unknown> = Omit<
   DraggableOptions<Data>,
   "onDrop"
 > &
-  DroppableOptions<Data, Dragged>;
+  DroppableOptions<Data, Dragged> & {
+    /** Allow this controller to receive its own drag. Default false. */
+    allowSelfDrop?: boolean;
+  };
 
 /** The combined store uses the same flat options as the dnd binding. */
 export type DragDroppableOptions<

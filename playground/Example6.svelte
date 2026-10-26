@@ -13,7 +13,6 @@
       type: "baby",
       data: baby,
       bottomTopThreshold: 0.2,
-      unless: (drag, { drop }) => drag === drop,
       onDrop({ bottom, dragged, drop, top }) {
         // @ts-ignore
         const from = babies.indexOf(dragged);
