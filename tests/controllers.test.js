@@ -388,3 +388,23 @@ test("a droppable update that leaves state unchanged keeps the same snapshot", (
   assert.equal(target.controller.getSnapshot(), snapshot);
   send(source.element, "dragend");
 });
+
+for (const custom of [false, true]) {
+  test(`mouse drag image preserves both grab offsets (custom: ${custom})`, (t) => {
+    const image = new TestElement();
+    image.rect = { left: 10, top: 20, width: 100, height: 100 };
+    const { element } = bind(t, draggable, {
+      type: "food",
+      ...(custom ? { dragEl: image } : {}),
+    });
+    element.rect = { left: 40, top: 60, width: 100, height: 100 };
+    let received;
+    send(element, "dragstart", {
+      clientX: 75,
+      clientY: 85,
+      dataTransfer: { setDragImage: (...args) => { received = args; } },
+    });
+    assert.deepEqual(received, custom ? [image, 65, 65] : [element, 35, 25]);
+    send(element, "dragend");
+  });
+}

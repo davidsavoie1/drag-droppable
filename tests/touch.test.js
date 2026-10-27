@@ -172,3 +172,28 @@ test("a custom drag image is copied instead of the touch source", (t) => {
   touch(element, "touchend", 0);
   assert.equal(document.body.children.length, 0);
 });
+
+for (const custom of [false, true]) {
+  test(`touch drag image stays at the grab point while moving (custom: ${custom})`, (t) => {
+    const finishHold = hold(t);
+    const image = new TestElement();
+    image.rect = { left: 10, top: 20, width: 100, height: 100 };
+    const { element } = bind(t, draggable, {
+      type: "food",
+      ...(custom ? { dragEl: image } : {}),
+    });
+    element.rect = { left: 40, top: 60, width: 100, height: 100 };
+    touch(element, "touchstart", 1, 75, 85);
+    finishHold();
+    flushFrames();
+    const clone = document.body.children[0];
+    assert.equal(clone.style.left, custom ? "10px" : "40px");
+    assert.equal(clone.style.top, custom ? "20px" : "60px");
+    touch(element, "touchmove", 1, 95, 115);
+    flushFrames();
+    assert.equal(clone.style.left, custom ? "30px" : "60px");
+    assert.equal(clone.style.top, custom ? "50px" : "90px");
+    touch(element, "touchend", 0);
+    assert.equal(document.body.children.length, 0);
+  });
+}

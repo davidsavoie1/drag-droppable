@@ -175,6 +175,7 @@ test("touch auto-scroll waits for activation, retargets the drop and keeps the i
     document.elementFromPoint = originalHitTest;
   });
   const source = startTouch(t);
+  source.element.rect = { left: 150, top: 540, width: 100, height: 100 };
   flushFrames();
   assert.equal(document.scrollingElement.scrollTop, 0);
   source.hold();
@@ -186,7 +187,7 @@ test("touch auto-scroll waits for activation, retargets the drop and keeps the i
   assert.equal(second.controller.getSnapshot().accepts, true);
   const image = document.body.children[0];
   assert.equal(image.style.position, "fixed");
-  assert.equal(Number.parseFloat(image.style.top), 590);
+  assert.equal(Number.parseFloat(image.style.top), 540);
   touch(source.element, "touchend", 0);
   assert.equal(received.drop, "second");
   const endedAt = document.scrollingElement.scrollTop;

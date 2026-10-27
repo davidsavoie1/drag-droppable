@@ -253,9 +253,9 @@ export default function draggable(options = {}) {
 
     if (effectAllowed) xfer.effectAllowed = effectAllowed;
     if (dragEl) {
-      const { left = 0 } = getClientRect(dragEl) || {};
+      const { left = 0, top = 0 } = getClientRect(dragEl) || {};
 
-      xfer.setDragImage(dragEl, e.clientX - left, 0);
+      xfer.setDragImage(dragEl, e.clientX - left, e.clientY - top);
     }
 
     if (!state.dragging) {
