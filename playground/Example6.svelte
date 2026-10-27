@@ -13,6 +13,7 @@
       type: "baby",
       data: { baby, index },
       bottomTopThreshold: 0.2,
+      touch: { dragImageOpacity: 0.85 },
       unless: ({ bottom, drag, drop, top }) =>
         (bottom && drop.index + 1 === drag.index) ||
         (top && drop.index - 1 === drag.index),

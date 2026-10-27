@@ -454,8 +454,39 @@ function createDragImage(e) {
   }
 
   state.dragImage = clone;
-  moveDragImage(e);
+  positionDragImage(e);
   rootDocument?.body?.appendChild(clone);
+  if (getSessionOptions()?.lift) liftDragImage(clone);
+}
+
+/* A startup cue on the floating image only; list elements stay untouched. */
+function liftDragImage(image) {
+  const reducedMotion = rootDocument?.defaultView?.matchMedia?.(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  if (reducedMotion) return;
+
+  const shadow = "0 8px 20px rgba(0, 0, 0, 0.25)";
+  const originalShadow = image.style.boxShadow || "none";
+  image.style.boxShadow = shadow;
+
+  image.style.transformOrigin = `${state.dragImageOffset.x}px ${state.dragImageOffset.y}px`;
+  const originalScale = image.style.scale || "none";
+  const scale =
+    originalScale === "none"
+      ? "1.025"
+      : originalScale
+          .split(/\s+/)
+          .map((value) => Number(value) * 1.025)
+          .join(" ");
+  image.style.scale = scale;
+  image.animate?.(
+    [
+      { scale: originalScale, boxShadow: originalShadow },
+      { scale, boxShadow: shadow },
+    ],
+    { duration: 50, easing: "ease-out" },
+  );
 }
 
 function destroyDragImage() {

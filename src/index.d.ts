@@ -6,6 +6,8 @@ export interface TouchOptions {
   /** Maximum scrolling speed in pixels per second. Default 1000. */
   scrollSpeed?: number;
   dragImageOpacity?: number;
+  /** Visually lift the touch drag image at startup. Default true. */
+  lift?: boolean;
   moveThreshold?: number;
   pressHold?: number;
   pressHoldMargin?: number;

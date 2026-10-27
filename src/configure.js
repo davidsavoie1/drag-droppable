@@ -5,6 +5,7 @@ export const DEFAULT_TOUCH_OPTIONS = {
   scrollSensitivity: 40,
   scrollSpeed: 1000,
   dragImageOpacity: 0.5,
+  lift: true,
   moveThreshold: 5,
   pressHold: 300,
   pressHoldMargin: 5,

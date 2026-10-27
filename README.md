@@ -536,6 +536,7 @@ configureDnD({
     scrollSensitivity: 40, // Edge activation zone, in pixels.
     scrollSpeed: 1000, // Maximum scroll speed, in pixels per second.
     dragImageOpacity: 0.5, // Opacity of the image created to follow the touch.
+    lift: true, // Visual cue when touch dragging starts.
     moveThreshold: 5, // Minimum movement in pixels to consider a drag valid.
     pressHold: 300, // Number of milliseconds to statically hold before initiating drag.
     pressHoldMargin: 5, // Tolerance in pixels while holding. Moving more cancels drag.
