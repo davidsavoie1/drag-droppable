@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [NEXT]
+## [0.1.2] - 2026-10-27
 
 - Add visual cue for press-hold drag (since vibrate doesn't always work)
 
