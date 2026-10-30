@@ -1,5 +1,9 @@
 import {
   createSortable,
+  configureDnD,
+  getConfig,
+  draggable,
+  droppable,
   type SortableAction,
   type SortableBinding,
   type SortableItemOptions,
@@ -115,3 +119,16 @@ const invalidDefault: SortableOptions = {
   // @ts-expect-error item identity belongs on each element
   index: 0,
 };
+
+createSortable({ classBefore: "before shared", classSwap: false });
+configureClasses();
+function configureClasses() {
+  const opts: SortableOptions = { classTop: null };
+  // @ts-expect-error classes are strings or disabled, not arrays
+  opts.classTop = ["top"];
+}
+
+configureDnD({ classDragging: "dragging", classAccepts: false });
+const globalClass: string | false | null | undefined = getConfig().classDragging;
+draggable({ classDraggable: "source", classDragging: null });
+droppable({ classTop: "top", classAccepts: false });

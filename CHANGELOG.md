@@ -6,6 +6,7 @@
 - Expand React and Vue integrations to `dnd` and `sortable`.
 - Move framework integrations code into sub-directory.
 - Add `middle`, `center`, `after`, `before` and `swap` data attributes and props.
+- Add configurable classes to mirror data attributes.
 
 ## [0.1.2] - 2026-10-27
 

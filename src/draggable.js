@@ -1,3 +1,4 @@
+import { createClasses } from "./classes.js";
 import { getConfig } from "./configure.js";
 import { DND_STORE, DRAGGABLE, DRAG_SOURCE } from "./constants.js";
 import { publishDrag } from "./dndSubs.js";
@@ -7,7 +8,6 @@ import {
   isElement,
   isFunc,
   isSyntheticEvent,
-  noop,
   preventDefault,
   preventNativeDefault,
 } from "./functions.js";
@@ -49,6 +49,8 @@ export default function draggable(options = {}) {
     dragging: false /* Is the element currently being dragged? */,
   };
   let unsetDataAttributes;
+  const staticClasses = createClasses();
+  const activeClasses = createClasses();
 
   setOptions(options);
 
@@ -152,7 +154,10 @@ export default function draggable(options = {}) {
 
   function publish(newState = state) {
     const keys = new Set([...Object.keys(state), ...Object.keys(newState)]);
-    if ([...keys].every((key) => Object.is(state[key], newState[key]))) return;
+    if ([...keys].every((key) => Object.is(state[key], newState[key]))) {
+      toggleAttributes();
+      return;
+    }
 
     state = newState;
     toggleAttributes();
@@ -189,6 +194,7 @@ export default function draggable(options = {}) {
 
     const { attributesPrefix = getConfig().attributesPrefix, dragging } = state;
 
+    activeClasses.update(el, { dragging: !!dragging }, _options);
     if (!attributesPrefix) return;
 
     el.toggleAttribute(`data-${attributesPrefix}-dragging`, !!dragging);
@@ -366,7 +372,9 @@ export default function draggable(options = {}) {
     } = _options;
     const draggableEl = el;
 
-    if (!attributesPrefix || !draggableEl) return noop;
+    staticClasses.update(draggableEl, { draggable: true }, _options);
+    activeClasses.update(draggableEl, { dragging: !!state.dragging }, _options);
+    if (!attributesPrefix || !draggableEl) return () => staticClasses.clear();
 
     draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, true);
 
@@ -381,6 +389,7 @@ export default function draggable(options = {}) {
       draggableEl.setAttribute(`data-${attributesPrefix}-draggable-type`, type);
     }
     return () => {
+      staticClasses.clear();
       draggableEl.toggleAttribute(`data-${attributesPrefix}-draggable`, false);
       draggableEl.removeAttribute(
         `data-${attributesPrefix}-draggable-namespace`,
@@ -413,6 +422,7 @@ export default function draggable(options = {}) {
     const handle = activeHandle;
 
     dragend();
+    activeClasses.clear();
     handle.removeAttribute("draggable");
     handle.removeEventListener("pointerdown", registerPointer);
     handle.removeEventListener("dragstart", dragstart);

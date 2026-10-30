@@ -18,7 +18,26 @@ export type TouchConfig = boolean | null | TouchOptions;
 export type AttributesPrefix = string | false | null;
 export type DisabledOptions = false | null | undefined | 0 | "";
 
-export interface DnDConfig {
+/** Whitespace-separated classes; false or null disables a global default. */
+export interface DnDClasses {
+  classAccepts?: string | false | null;
+  classAfter?: string | false | null;
+  classBefore?: string | false | null;
+  classBottom?: string | false | null;
+  classCenter?: string | false | null;
+  classConcerned?: string | false | null;
+  classDraggable?: string | false | null;
+  classDragging?: string | false | null;
+  classDroppable?: string | false | null;
+  classLeft?: string | false | null;
+  classMiddle?: string | false | null;
+  classRight?: string | false | null;
+  classSwap?: string | false | null;
+  classTop?: string | false | null;
+  classUnconcerned?: string | false | null;
+}
+
+export interface DnDConfig extends DnDClasses {
   attributesPrefix?: AttributesPrefix;
   /** Height fraction of each top/bottom zone. Default 0.5; <=0 disables; capped at 0.5. */
   bottomTopThreshold?: number;
@@ -31,7 +50,7 @@ export interface DnDConfig {
 export function configureDnD(options?: DnDConfig): void;
 
 /** Returns a shallow copy; the nested touch object is still shared. */
-export function getConfig(): {
+export function getConfig(): DnDClasses & {
   attributesPrefix?: AttributesPrefix;
   bottomTopThreshold?: number;
   leftRightThreshold?: number;
@@ -80,7 +99,7 @@ export type DropPredicate<Dragged = unknown, Drop = unknown> = (
 
 export type ByType<Callback> = Callback | Record<string, Callback | undefined>;
 
-export interface DraggableOptions<Dragged = unknown, Drop = unknown> {
+export interface DraggableOptions<Dragged = unknown, Drop = unknown> extends DnDClasses {
   el?: HTMLElement;
   namespace?: string | null;
   type?: string;
@@ -107,7 +126,7 @@ export interface DraggableOptions<Dragged = unknown, Drop = unknown> {
   onChange?: (state: DraggableState) => void;
 }
 
-export interface DroppableOptions<Drop = unknown, Dragged = unknown> {
+export interface DroppableOptions<Drop = unknown, Dragged = unknown> extends DnDClasses {
   el?: HTMLElement;
   namespace?: string | null;
   type?: string;

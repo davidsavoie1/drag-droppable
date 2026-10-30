@@ -1,3 +1,4 @@
+import { createClasses } from "./classes.js";
 import { getConfig } from "./configure.js";
 import {
   DND_STORE,
@@ -15,7 +16,6 @@ import {
   getClientRect,
   isElement,
   isFunc,
-  noop,
 } from "./functions.js";
 
 /**
@@ -35,6 +35,8 @@ export default function droppable(options) {
   let state = {};
   let subscribers = new Set();
   let unsetDataAttributes;
+  const staticClasses = createClasses();
+  const activeClasses = createClasses();
 
   setOptions(options);
 
@@ -138,6 +140,7 @@ export default function droppable(options) {
     if (destroyed || _options !== currentOptions) return;
 
     updateRegistration();
+    toggleAttributes();
   }
 
   function updateRegistration() {
@@ -169,7 +172,8 @@ export default function droppable(options) {
       _options;
     const droppableEl = el;
 
-    if (!attributesPrefix || !droppableEl) return noop;
+    staticClasses.update(droppableEl, { droppable: true }, _options);
+    if (!attributesPrefix || !droppableEl) return () => staticClasses.clear();
 
     droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, true);
 
@@ -181,6 +185,7 @@ export default function droppable(options) {
     }
 
     return () => {
+      staticClasses.clear();
       droppableEl.toggleAttribute(`data-${attributesPrefix}-droppable`, false);
       droppableEl.removeAttribute(
         `data-${attributesPrefix}-droppable-namespace`,
@@ -237,7 +242,10 @@ export default function droppable(options) {
   function publish(newState = state) {
     /* Avoid notifying subscribers again when an options update changes no state. */
     const keys = new Set([...Object.keys(state), ...Object.keys(newState)]);
-    if ([...keys].every((key) => Object.is(state[key], newState[key]))) return;
+    if ([...keys].every((key) => Object.is(state[key], newState[key]))) {
+      toggleAttributes();
+      return;
+    }
 
     state = newState;
     toggleAttributes();
@@ -266,12 +274,10 @@ export default function droppable(options) {
       unconcerned,
     } = state;
 
-    if (!attributesPrefix) return;
-
     const shouldSet = !forceRemove && !!dragging;
 
     /* Position attributes are present only during an accepted hover. */
-    Object.entries({
+    const flags = {
       accepts,
       after: accepts && after,
       before: accepts && before,
@@ -284,7 +290,12 @@ export default function droppable(options) {
       swap: accepts && swap,
       top: accepts && top,
       unconcerned,
-    }).forEach(([k, v]) => {
+    };
+    activeClasses.update(el, Object.fromEntries(
+      Object.entries(flags).map(([key, value]) => [key, !!(shouldSet && value)]),
+    ), _options);
+    if (!attributesPrefix) return;
+    Object.entries(flags).forEach(([k, v]) => {
       el.toggleAttribute(`data-${attributesPrefix}-${k}`, !!(shouldSet && v));
     });
 

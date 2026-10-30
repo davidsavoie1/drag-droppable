@@ -1,3 +1,4 @@
+import { classOptions } from "./classes.js";
 import { DND_STORE, DRAGDROPPABLE, DRAG_SOURCE, DROP_POSITION } from "./constants.js";
 import draggable from "./draggable.js";
 import droppable from "./droppable.js";
@@ -138,6 +139,7 @@ export default function dragDroppable(options) {
     } = _options;
 
     const commonProps = {
+      ...Object.fromEntries(classOptions.map((key) => [key, _options[key]])),
       attributesPrefix,
       data,
       disabled,

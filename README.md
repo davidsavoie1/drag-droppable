@@ -27,6 +27,7 @@ The core has no dependencies, only a few kB of modern Javascript. Optional React
 - [Dynamic configuration](#dynamic-configuration)
 - [Global configuration](#global-configuration)
 - [Data attributes](#data-attributes)
+- [State classes](#state-classes)
 - [Touch](#touch)
 - [Lifecycle](#lifecycle)
 - [Limitations](#limitations)
@@ -438,7 +439,7 @@ To copy instead of move, keep the source item in `waiting` by removing the `if (
 
 ## Observing changes
 
-Use `onChange` to update your interface as a drag progresses. You can also style elements with [data attributes](#data-attributes), without a callback.
+Use `onChange` to update your interface as a drag progresses. You can also style elements with [data attributes](#data-attributes) or [state classes](#state-classes), without a callback.
 
 ```svelte
 <script>
@@ -630,6 +631,39 @@ In Svelte component styles, wrap the attribute selector in `:global()` and combi
 ```
 
 The prefix can be changed globally or overridden on individual elements. See [Global configuration](#global-configuration).
+
+## State classes
+
+Use `classTop`, `classBefore`, `classAfter`, `classSwap`, etc. to mirror the boolean data attributes with CSS classes. Configure defaults with `configureDnD`, or override them on a binding or in `createSortable`:
+
+```js
+configureDnD({ classDragging: "opacity-50" });
+const sortable = createSortable({
+  type: "item",
+  classBefore: "border-t-2 border-blue-500",
+  classAfter: "border-b-2 border-blue-500",
+});
+```
+
+Available options:
+
+- `classDraggable`
+- `classDragging`
+- `classDroppable`
+- `classAccepts`
+- `classConcerned`
+- `classUnconcerned`
+- `classTop`
+- `classBottom`
+- `classLeft`
+- `classRight`
+- `classMiddle`
+- `classCenter`
+- `classBefore`
+- `classAfter`
+- `classSwap`
+
+Position classes apply only during an accepted hover. Local `false`, `null`, or an empty string disables a global class default. Multiple class names are separated by whitespace. Cleanup preserves pre-existing classes and classes still needed by another active state.
 
 ## Touch
 

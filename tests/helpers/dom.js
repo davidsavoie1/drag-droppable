@@ -5,6 +5,11 @@
  */
 export class TestElement extends EventTarget {
   attributes = new Map();
+  classList = {
+    contains: (name) => (this.attributes.get("class") || "").split(/\s+/).includes(name),
+    add: (...names) => this.attributes.set("class", [...new Set([...(this.attributes.get("class") || "").split(/\s+/).filter(Boolean), ...names])].join(" ")),
+    remove: (...names) => this.attributes.set("class", (this.attributes.get("class") || "").split(/\s+/).filter((name) => name && !names.includes(name)).join(" ")),
+  };
   style = {
     cursor: "",
     userSelect: "text",
