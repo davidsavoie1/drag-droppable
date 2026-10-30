@@ -1,6 +1,14 @@
 import type { RefCallback } from "react";
 import type {
   DisabledOptions,
+  createSortable,
+  DnDOptions,
+  DragDroppableController,
+  DragDroppableState,
+  SortableAction,
+  SortableItemController,
+  SortableItemOptions,
+  SortableItemState,
   DraggableController,
   DraggableOptions,
   DraggableState,
@@ -36,3 +44,20 @@ export function useDroppable<Drop = unknown, Dragged = unknown>(
   DroppableController<Drop, Dragged>,
   DroppableState<Drop, Dragged>
 >;
+
+
+/** Combined source and target roles, with the same flat options as dnd. */
+export function useDnD<Data = unknown, Dragged = unknown>(
+  options?: Omit<DnDOptions<Data, Dragged>, "el"> | DisabledOptions,
+  settings?: DnDHookSettings,
+): DnDHookResult<DragDroppableController<Data, Dragged>, DragDroppableState<Data, Dragged>>;
+
+/** Create once per list; callbacks and rules follow committed options. dataToId is initial-only. */
+export const useCreateSortable: typeof createSortable;
+
+/** Call in a keyed row component, passing the same shared list action throughout its lifetime. */
+export function useSortable<Data = unknown, Id = unknown>(
+  sortable: SortableAction<Data, Id>,
+  options: SortableItemOptions<Data, Id>,
+  settings?: DnDHookSettings,
+): DnDHookResult<SortableItemController<Data, Id>, SortableItemState<Data, Id>>;

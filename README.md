@@ -752,6 +752,46 @@ Pass options to the hook and use `ref` to attach the element. Server rendering s
 
 For TypeScript, specify local data first and incoming data second, for example `useDroppable<Baby, Food>(options)`.
 
+### Combined roles in React
+
+`useDnD(options, settings)` combines dragging and dropping, with the same options as `dnd`. Its `state.dragging` describes this element being moved; `state.accepts` describes an incoming drag.
+
+```jsx
+const { ref, state } = useDnD({ type: "baby", data: baby, onDrop: visitBaby });
+```
+
+Import it from `drag-droppable/react`, like the other hooks.
+
+### Sortable lists in React
+
+Call `useCreateSortable` once in the list component, then `useSortable` in each keyed row component. Each item returns `ref`, `state`, and a managed `controller`, like the other hooks.
+
+```jsx
+import { useState } from "react";
+import { useCreateSortable, useSortable } from "drag-droppable/react";
+
+function BabyRow({ sortable, baby, index }) {
+  const { ref, state } = useSortable(sortable, { type: "baby", data: baby, index });
+  return <div ref={ref} className={state.accepts ? "highlight" : ""}>{baby.name}</div>;
+}
+
+export default function Nursery() {
+  const [babies, setBabies] = useState([
+    { _id: "mia", name: "Mia" },
+    { _id: "leo", name: "Leo" },
+  ]);
+  const sortable = useCreateSortable({
+    dataToId: "_id",
+    onListChange: (list) => setBabies(list),
+  });
+  return babies.map((baby, index) => (
+    <BabyRow key={baby._id} sortable={sortable} baby={baby} index={index} />
+  ));
+}
+```
+
+The list instance stays stable while rules and callbacks follow updated options. `dataToId` is fixed when the list is created. Item options, including `index`, update automatically. Use `{ subscribe: false }` as the third argument of `useSortable` if you only need data attributes and callbacks. External insertions use the same `allowExternal` and `onListChange(data, context)` options as [Sorting](#sorting-createsortable).
+
 ## Usage in Vue (optional)
 
 Vue 3.3+ applications can import composables from `drag-droppable/vue`. Vue is an optional peer dependency; the core entry point does not import it.
@@ -806,6 +846,63 @@ The returned state then stays at its initial value, while callbacks, including `
 The composable follows element changes and handles cleanup when the component unmounts. Pass configuration through its options and attach the element using its ref. Server rendering starts with idle state.
 
 Type parameters follow the same convention as the core and React APIs: local data first, partner data second, for example `useDroppable<Baby, Food>(() => options)`.
+
+### Combined roles in Vue
+
+`useDnD(options, settings)` combines dragging and dropping, with the same options as `dnd`. Its `state.value.dragging` describes this element being moved; `state.value.accepts` describes an incoming drag.
+
+```js
+const { ref: babyRef, state } = useDnD(() => ({
+  type: "baby", data: props.baby, onDrop: visitBaby,
+}));
+```
+
+Import it from `drag-droppable/vue`, like the other composables.
+
+### Sortable lists in Vue
+
+Create a shared sortable in the parent and pass it to keyed row components:
+
+```vue
+<!-- Nursery.vue -->
+<script setup>
+import { ref } from "vue";
+import { useCreateSortable } from "drag-droppable/vue";
+import BabyRow from "./BabyRow.vue";
+
+const babies = ref([
+  { _id: "mia", name: "Mia" },
+  { _id: "leo", name: "Leo" },
+]);
+const sortable = useCreateSortable({
+  dataToId: "_id",
+  onListChange: (list) => { babies.value = list; },
+});
+</script>
+
+<template>
+  <BabyRow v-for="(baby, index) in babies" :key="baby._id"
+    :sortable="sortable" :baby="baby" :index="index" />
+</template>
+```
+
+```vue
+<!-- BabyRow.vue -->
+<script setup>
+import { useSortable } from "drag-droppable/vue";
+
+const props = defineProps(["sortable", "baby", "index"]);
+const { ref: babyRef, state } = useSortable(props.sortable, () => ({
+  type: "baby", data: props.baby, index: props.index,
+}));
+</script>
+
+<template>
+  <div ref="babyRef" :class="{ highlight: state.accepts }">{{ baby.name }}</div>
+</template>
+```
+
+Use a getter for reactive list settings, just as for item options. The list stays stable; `dataToId` is fixed at creation. Each row follows element changes and cleans up automatically. `useSortable` accepts `{ subscribe: false }` as its third argument. External insertions use the same [sorting options](#sorting-createsortable) as the core action.
 
 ## Examples
 

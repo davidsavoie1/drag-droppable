@@ -320,6 +320,21 @@ export type SortableItemOptions<Data = unknown, Id = unknown> = Omit<
   unless?: ByType<DropPredicate<Data, Data>>;
 };
 
+/** Combined state exposed by framework adapters for one sortable item. */
+export type SortableItemState<Data = unknown, Id = unknown> = DragDroppableState<
+  SortableItem<Data, Id>, Data | SortableItem<Data, Id>
+>;
+
+/** Managed by a framework adapter; configure it through the hook/composable. */
+export interface SortableItemController<Data = unknown, Id = unknown> {
+  bind(element: HTMLElement): void;
+  unbind(): void;
+  destroy(): void;
+  update(options: SortableItemOptions<Data, Id>): void;
+  getSnapshot(): Readonly<SortableItemState<Data, Id>>;
+  subscribe(callback: (state: SortableItemState<Data, Id>) => void): () => void;
+}
+
 /** An action for one element; updates replace all item options. */
 export type SortableBinding<Data = unknown, Id = unknown> = DnDBinding<
   SortableItemOptions<Data, Id>

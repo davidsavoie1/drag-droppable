@@ -113,3 +113,8 @@ and invalid configurations. Run it separately with TypeScript:
 ```sh
 npm exec --yes --package=typescript -- tsc -p tests/types/tsconfig.json
 ```
+
+React and Vue integration tests cover `useDnD`, `useCreateSortable`, and
+`useSortable`: keyed reordering, changing rules and callbacks, element replacement,
+external transfers, cleanup, disabled subscriptions, and server rendering.
+The TypeScript fixtures also validate both framework entry points.

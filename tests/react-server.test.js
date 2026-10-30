@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
-import { useDraggable, useDroppable } from "../src/react.js";
+import { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } from "../src/react.js";
 
 test("hooks render on the server without DOM globals", () => {
   assert.equal(typeof document, "undefined");
@@ -20,4 +20,17 @@ test("hooks render on the server without DOM globals", () => {
     renderToString(h(App)),
     "<section><div>false</div><div>undefined</div></section>",
   );
+});
+
+
+test("combined and sortable React hooks render idle state on the server", () => {
+  function App() {
+    const list = useCreateSortable({ onListChange() { assert.fail("SSR callback"); } });
+    const item = useSortable(list, { data: "A", index: 0, type: "item" });
+    const combined = useDnD({ type: "item" });
+    return h("section", null,
+      h("div", { ref: item.ref }, String(item.state.dragging)),
+      h("div", { ref: combined.ref }, String(combined.state.dragging)));
+  }
+  assert.equal(renderToString(h(App)), "<section><div>false</div><div>false</div></section>");
 });

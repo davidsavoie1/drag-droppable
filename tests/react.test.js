@@ -28,7 +28,7 @@ dom.window.HTMLElement.prototype.getBoundingClientRect = () => ({
   height: 100,
 });
 const { createRoot } = await import("react-dom/client");
-const { useDraggable, useDroppable } = await import("../src/react.js");
+const { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } = await import("../src/react.js");
 const { configureDnD } = await import("../src/index.js");
 
 beforeEach(() => configureDnD({ attributesPrefix: "dnd", touch: true }));
@@ -43,7 +43,7 @@ function mount(t, App, props = {}) {
   }
   t.after(() => {
     const elements = [
-      ...container.querySelectorAll("[data-source], [data-target]"),
+      ...container.querySelectorAll("[data-source], [data-target], [data-row]"),
     ];
     act(() => root.unmount());
     for (const element of elements) {
@@ -336,4 +336,117 @@ test("onChange observes source and target with React subscriptions disabled", (t
   send(container.querySelector("[data-source]"), "dragend");
   assert.equal(sources.at(-1).dragging, false);
   assert.deepEqual(targets.at(-1), {});
+});
+
+
+test("combined React hook distinguishes incoming drops from source dragging without render loops", (t) => {
+  let source, target, renders = 0;
+  const drops = [];
+  function App() {
+    assert.ok(++renders < 40);
+    source = useDnD({ type: "item", data: { name: "source" }, onDrop: () => drops.push("source") });
+    target = useDnD({ type: "item", data: { name: "target" }, onDrop: () => drops.push("target") });
+    return h("section", null,
+      h("div", { ref: source.ref, "data-source": "" }),
+      h("div", { ref: target.ref, "data-target": "" }));
+  }
+  const { container } = mount(t, App);
+  send(container.querySelector("[data-source]"), "dragstart");
+  send(container.querySelector("[data-target]"), "dragover");
+  assert.equal(source.state.dragging, true);
+  assert.equal(target.state.dragging, false);
+  assert.equal(target.state.accepts, true);
+  assert.equal(target.state.drop.name, "target");
+  send(container.querySelector("[data-target]"), "drop");
+  send(container.querySelector("[data-source]"), "dragend");
+  assert.deepEqual(drops, ["target"]);
+});
+
+test("React sortable keeps its list through Strict Mode, reorder, option updates and ref replacement", (t) => {
+  let listAction, firstAction, itemStates = new Map(), renders = 0;
+  const callbacks = [];
+  function Row({ sortable, value, index, alternate }) {
+    assert.ok(++renders < 300, `sortable render count: ${renders}`);
+    const item = useSortable(sortable, { type: "item", data: { id: value }, index });
+    itemStates.set(value, item.state);
+    return h(alternate ? "article" : "div", { ref: item.ref, "data-row": value }, value);
+  }
+  function App({ noReorder = false, alternate = false, label = "initial" }) {
+    const [items, setItems] = useState(["A", "B", "C"]);
+    const sortable = useCreateSortable({ dataToId: "id", noReorder,
+      onListChange(next, context) { callbacks.push([label, context.ids]); setItems(next.map((value) => value.id)); },
+    });
+    listAction = sortable;
+    firstAction ??= sortable;
+    return h("section", null, items.map((value, index) =>
+      h(Row, { key: value, sortable, value, index, alternate })));
+  }
+  const mounted = mount(t, App);
+  const row = (id) => mounted.container.querySelector(`[data-row="${id}"]`);
+  send(row("A"), "dragstart");
+  send(row("B"), "dragover", { clientY: 75 });
+  assert.equal(itemStates.get("B").accepts, true);
+  const stationaryRenders = renders;
+  send(row("B"), "dragover", { clientY: 75 });
+  assert.equal(renders, stationaryRenders, "unchanged hover must not render again");
+  send(row("B"), "drop", { clientY: 75 });
+  send(row("A"), "dragend");
+  assert.deepEqual(callbacks.at(-1), ["initial", ["B", "A", "C"]]);
+  assert.deepEqual([...mounted.container.querySelectorAll("[data-row]")].map((el) => el.textContent), ["B", "A", "C"]);
+  mounted.render({ noReorder: true, label: "blocked" });
+  assert.equal(listAction, firstAction);
+  send(row("A"), "dragstart");
+  send(row("C"), "dragover");
+  assert.equal(itemStates.get("C").accepts, false);
+  // Changing list rules while hovering re-evaluates the registered target.
+  mounted.render({ noReorder: false, label: "updated" });
+  send(row("C"), "dragover", { clientY: 75 });
+  send(row("C"), "drop", { clientY: 75 });
+  send(row("A"), "dragend");
+  assert.deepEqual(callbacks.at(-1), ["updated", ["B", "C", "A"]]);
+  const old = row("A");
+  mounted.render({ alternate: true, label: "rebound" });
+  assert.equal(old.hasAttribute("draggable"), false);
+  send(row("A"), "dragstart");
+  send(row("B"), "dragover", { clientY: 25 });
+  send(row("B"), "drop", { clientY: 25 });
+  send(row("A"), "dragend");
+  assert.deepEqual(callbacks.at(-1), ["rebound", ["A", "B", "C"]]);
+});
+
+
+test("React sortables transfer across shared lists and clean up a removed source", (t) => {
+  let context;
+  function Row({ sortable, value, index, list }) {
+    const item = useSortable(sortable, { type: "item", data: value, index }, { subscribe: false });
+    return h("div", { ref: item.ref, "data-row": `${list}-${value.id}` });
+  }
+  function App() {
+    const [left, setLeft] = useState([{ id: "X" }]);
+    const [right, setRight] = useState([{ id: "A" }, { id: "B" }]);
+    const source = useCreateSortable({ dataToId: "id", noReorder: true, onListChange: setLeft });
+    const target = useCreateSortable({ dataToId: "id", allowExternal: true,
+      onListChange(next, details) {
+        context = details;
+        setRight(next);
+        if (details.external) setLeft((items) => items.filter((item) => item.id !== details.drag.id));
+      },
+    });
+    return h("section", null,
+      left.map((value, index) => h(Row, { key: `left-${value.id}`, sortable: source, value, index, list: "left" })),
+      right.map((value, index) => h(Row, { key: `right-${value.id}`, sortable: target, value, index, list: "right" })));
+  }
+  const { container } = mount(t, App);
+  const oldSource = container.querySelector('[data-row="left-X"]');
+  const target = container.querySelector('[data-row="right-A"]');
+  send(oldSource, "dragstart");
+  send(target, "dragover", { clientY: 75 });
+  assert.equal(target.hasAttribute("data-dnd-accepts"), true);
+  send(target, "drop", { clientY: 75 });
+  assert.equal(context.external, true);
+  assert.equal(context.dragIndex, 0);
+  assert.deepEqual(context.ids, ["A", "X", "B"]);
+  assert.equal(container.querySelector('[data-row="left-X"]'), null);
+  assert.equal(oldSource.hasAttribute("draggable"), false);
+  assert.deepEqual([...container.querySelectorAll("[data-row]")].map((el) => el.dataset.row), ["right-A", "right-X", "right-B"]);
 });

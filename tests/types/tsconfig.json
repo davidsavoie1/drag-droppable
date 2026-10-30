@@ -7,5 +7,5 @@
     "types": [],
     "skipLibCheck": true
   },
-  "include": ["sortable.ts"]
+  "include": ["sortable.ts", "frameworks.ts"]
 }

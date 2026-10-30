@@ -6,3 +6,6 @@ export const DRAGDROPPABLE = Symbol("DRAGDROPPABLE");
 export const DROPPABLE = Symbol("DROPPABLE");
 export const SORTABLE = Symbol("SORTABLE");
 export const SYNTHETIC = Symbol("SYNTHETIC");
+
+/* Private list-options bridge for framework adapters. */
+export const SORTABLE_CONFIG = Symbol("SORTABLE_CONFIG");

@@ -1,4 +1,4 @@
-import { SORTABLE } from "./constants.js";
+import { SORTABLE, SORTABLE_CONFIG } from "./constants.js";
 import { dnd } from "./dnd.js";
 import { arrayEqual, identity, isFunc, isObject } from "./functions.js";
 
@@ -16,7 +16,7 @@ export default function createSortable({
   const getId = interpretDataToId(dataToId);
   const sortableId = Symbol("sortableId");
 
-  return function sortable(el, options) {
+  function sortable(el, options) {
     let state = {};
     let _options = {};
     let controller;
@@ -24,6 +24,10 @@ export default function createSortable({
     const item = {
       getData: () => state.data,
       getIndex: () => state.index,
+      refresh() {
+        if (!destroyed && itemsById.get(state.id) === item)
+          setOptions(_options);
+      },
     };
 
     setOptions(options);
@@ -250,7 +254,44 @@ export default function createSortable({
         });
       }
     }
-  };
+  }
+
+  /* The identity selector belongs to this list's lifetime. Other settings and
+   * callbacks can follow committed framework options without replacing items. */
+  Object.defineProperty(sortable, SORTABLE_CONFIG, {
+    value(options = {}) {
+      const previous = [
+        allowExternal,
+        horizontal,
+        noAfter,
+        noBefore,
+        noReorder,
+        noSwap,
+      ];
+      ({
+        allowExternal = false,
+        horizontal = false,
+        noAfter = false,
+        noBefore = false,
+        noReorder = false,
+        noSwap = false,
+        onListChange = undefined,
+      } = options || {});
+      const next = [
+        allowExternal,
+        horizontal,
+        noAfter,
+        noBefore,
+        noReorder,
+        noSwap,
+      ];
+      if (!arrayEqual(previous, next)) {
+        [...itemsById.values()].forEach((item) => item.refresh());
+      }
+    },
+  });
+
+  return sortable;
 
   function getIds() {
     return Array.from(itemsById.keys()).sort(

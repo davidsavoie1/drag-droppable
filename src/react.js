@@ -10,6 +10,10 @@ import {
 } from "react";
 import draggable from "./draggable.js";
 import droppable from "./droppable.js";
+import dragDroppable from "./dragDroppable.js";
+import createSortable from "./sortable.js";
+import sortableController from "./sortableController.js";
+import { SORTABLE_CONFIG } from "./constants.js";
 import { noop } from "./functions.js";
 
 const useCommitEffect =
@@ -18,17 +22,38 @@ const subscribeInactive = () => noop;
 
 /** Attach a drag source and observe its state. Set subscribe:false for CSS-only use. */
 export function useDraggable(options = {}, settings = {}) {
-  return useDnD(draggable, options, settings);
+  return useController(draggable, options, settings, "source");
 }
 
 /** Attach a drop target and observe its state. Set subscribe:false for CSS-only use. */
 export function useDroppable(options = {}, settings = {}) {
-  return useDnD(droppable, options, settings);
+  return useController(droppable, options, settings, "target");
 }
 
-function useDnD(factory, options, { subscribe = true }) {
+/** Attach both roles. dragging describes this element, accepts an incoming drag. */
+export function useDnD(options = {}, settings = {}) {
+  return useController(dragDroppable, options, settings, "combined");
+}
+
+/** One stable sortable per list. The identity selector is fixed at creation. */
+export function useCreateSortable(options = {}) {
+  const [sortable] = useState(() => createSortable(options));
+  useCommitEffect(() => { sortable[SORTABLE_CONFIG](options); });
+  return sortable;
+}
+
+/** Attach one item to a shared sortable. Call in a keyed row component. */
+export function useSortable(sortable, options, settings = {}) {
+  const [initial] = useState(() => sortable);
+  useCommitEffect(() => {
+    if (sortable !== initial) throw new Error("Keep the same sortable instance for a mounted item.");
+  }, [sortable, initial]);
+  return useController(() => sortableController(initial), options, settings, "sortable");
+}
+
+function useController(factory, options, { subscribe = true }, kind) {
   /* Unbound controllers have no DOM effects and can safely be created during render. */
-  const [binding] = useState(() => createBinding(factory));
+  const [binding] = useState(() => createBinding(factory, kind !== "source"));
   const { controller, getSnapshot, getServerSnapshot } = binding;
   const element = useRef(null);
 
@@ -61,21 +86,26 @@ function useDnD(factory, options, { subscribe = true }) {
 
   /* Drop data already comes from this render's options. Observing it again would
    * loop when inline data objects are recreated after each store notification. */
-  const state =
-    factory === droppable && snapshot.dragging
-      ? { ...snapshot, drop: options?.data }
-      : snapshot;
+  const current = controller.getSnapshot();
+  const state = subscribe && kind !== "source" && Object.hasOwn(current, "drop")
+    ? {
+        ...snapshot,
+        drop: kind === "sortable"
+          ? { ...current.drop, data: options.data, index: options.index }
+          : options?.data,
+      }
+    : snapshot;
 
   return { ref, state, controller };
 }
 
-function createBinding(factory) {
+function createBinding(factory, target) {
   const controller = factory();
   let snapshot;
 
   function getSnapshot() {
     const next = { ...controller.getSnapshot() };
-    if (factory === droppable) delete next.drop;
+    if (target) delete next.drop;
 
     if (
       !snapshot ||
