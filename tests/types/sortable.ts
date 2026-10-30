@@ -25,6 +25,8 @@ const identity = createSortable<string>({
     const external: boolean = context.external;
     const sourceIndex: number | undefined = context.dragIndex;
     const top: boolean | undefined = context.top;
+    const swap: boolean | undefined = context.swap;
+    const center: boolean | undefined = context.center;
     // @ts-expect-error the second argument is context, not the ids array
     const oldIds: string[] = context;
     const keys: string[] = context.ids;
@@ -60,18 +62,22 @@ const action: SortableAction<Baby, string> = byKey;
 byFunction(element, {
   data: baby,
   index: 0,
-  unless: { baby: ({ drag, drop, left }) => drag.hunger > drop.hunger && !!left },
-  onDrop({ drag, drop }) {
+  unless: { baby: ({ drag, drop, before, middle }) => drag.hunger > drop.hunger && !!before && !!middle },
+  onDrop({ drag, drop, before, after, swap, center }) {
     const source: Baby = drag;
     const target: Baby = drop;
+    const intention: boolean | undefined = swap;
+    const zone: boolean | undefined = center;
   },
   onDrag(data) {
     const original: Baby = data.data;
     const id: string = data.id;
   },
-  when: ({ drop }) => drop.data.hunger > 0,
+  when: ({ drop, after }) => drop.data.hunger > 0 && after !== false,
   onChange(state) {
     const local: Baby | undefined = state.drop?.data;
+    const intent: boolean | undefined = state.before;
+    const middle: boolean | undefined = state.middle;
   },
 });
 // @ts-expect-error sortable only supports a shared onDrop function

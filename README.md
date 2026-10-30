@@ -107,8 +107,10 @@ onDrop(
     dx, // x position on drop element, in ratio between 0 and 1.
     dy, // y position on drop element, in ratio between 0 and 1.
     left, // Within the configured left zone.
+    center, // Inside the target, between left and right zones.
     right, // Within the configured right zone.
     top, // Within the configured top zone.
+    middle, // Inside the target, between top and bottom zones.
     bottom, // Within the configured bottom zone.
   }) => {},
 );
@@ -248,7 +250,7 @@ const {
 
 **`when({ drag, drop, type, namespace, ...position })`**: Predicate function that allows drop only when true.
 
-Both receive one object containing `{ drag, drop, type, namespace, ...position }`. Position fields (`x`, `y`, `dx`, `dy`, `left`, `right`, `top`, `bottom`) are available during hover and drop when the target has a usable rectangle. For example:
+Both receive one object containing `{ drag, drop, type, namespace, ...position }`. Position fields (`x`, `y`, `dx`, `dy`, `left`, `right`, `top`, `bottom`, `middle`, `center`) are available during hover and drop when the target has a usable rectangle. For example:
 
 ```js
 when: ({ drag: food, drop: baby }) =>
@@ -374,6 +376,24 @@ Drops are prevented when position would not generate any change (ie dropping an 
 
 When dropzone thresholds less than 0.5 are defined on `sortable` (`bottomTopThreshold` for vertical list, `leftRightThreshold` for horizontal), a middle zone is created. A drop on it will be treated as an element swap instead of an insertion.
 
+### Styling sortable interactions
+
+Sortable state, `when`, `unless`, `onDrop`, and list-change context also include `before`, `after`, and `swap`. They follow the list's orientation. `swap` uses `middle` for vertical lists and `center` for horizontal lists; these interior zones are false outside the target rectangle. Without a usable position, the fields are absent.
+
+Use `data-dnd-before`, `data-dnd-after`, and `data-dnd-swap` to style the accepted operation, with your configured prefix. Callbacks still describe refused zones so you can use these fields in acceptance conditions.
+
+```css
+[data-dnd-before]::before {
+  content: "Insert before";
+}
+[data-dnd-after]::before {
+  content: "Insert after";
+}
+[data-dnd-swap] {
+  outline: 2px solid;
+}
+```
+
 ### Adding external elements
 
 A `sortable` element configured with `allowExternal` can accept drag elements that are external to its own list, even elements that are not themselves `sortable` (ie a compatible draggable element).
@@ -433,15 +453,15 @@ Use `onChange` to update your interface as a drag progresses. You can also style
 
 The callback runs immediately when added, then whenever the state changes. Replacing the callback does not call it again unless the state also changes, so functions written directly in the options work fine. Removing and later adding `onChange` triggers a new immediate call.
 
-| State field                                            | Meaning                                                                                                |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `dragging`                                             | For `dndDrag` and `dnd`, this element is being dragged. For `dndDrop`, a matching drag is in progress. |
-| `pointerType`                                          | The source pointer type, such as `"mouse"` or `"touch"`, when available.                               |
-| `concerned`                                            | The target accepts the current drag's type, namespace, and conditions.                                 |
-| `unconcerned`                                          | Type and namespace match, but conditions prevent a drop.                                               |
-| `accepts`                                              | The drag is over this target and a drop is allowed.                                                    |
-| `drag`, `drop`, `type`, `namespace`                    | Data and identity of the current drag and target.                                                      |
-| `x`, `y`, `dx`, `dy`, `left`, `right`, `top`, `bottom` | Position over the target; see [Data shape](#data-shape).                                               |
+| State field                                                                | Meaning                                                                                                |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `dragging`                                                                 | For `dndDrag` and `dnd`, this element is being dragged. For `dndDrop`, a matching drag is in progress. |
+| `pointerType`                                                              | The source pointer type, such as `"mouse"` or `"touch"`, when available.                               |
+| `concerned`                                                                | The target accepts the current drag's type, namespace, and conditions.                                 |
+| `unconcerned`                                                              | Type and namespace match, but conditions prevent a drop.                                               |
+| `accepts`                                                                  | The drag is over this target and a drop is allowed.                                                    |
+| `drag`, `drop`, `type`, `namespace`                                        | Data and identity of the current drag and target.                                                      |
+| `x`, `y`, `dx`, `dy`, `left`, `right`, `top`, `bottom`, `middle`, `center` | Position over the target; see [Data shape](#data-shape).                                               |
 
 Source state contains `dragging` and `pointerType`; target state contains the acceptance, data, and position fields. `dnd` combines them. Target position clears on leave or drop, and drag state resets when the drag ends or the element is detached. Treat the received state as read-only.
 
@@ -545,7 +565,7 @@ configureDnD({
 });
 ```
 
-These defaults apply to droppables unless they specify a [local override](#drop-dnddrop). Thresholds only affect the `left`, `right`, `top`, and `bottom` flags and their data attributes. Drops can still be accepted in the neutral center.
+These defaults apply to droppables unless they specify a [local override](#drop-dnddrop). Thresholds define the edge zones and the interior bands: `middle` is between `top` and `bottom`, and `center` between `left` and `right`. Both require the pointer to be inside the target rectangle. Drops can still be accepted in the neutral center.
 
 ## Data attributes
 
@@ -568,6 +588,8 @@ The library doesn't include any styling, only data that can be used to apply sty
 - `data-dnd-accepts`: Present when dragged element is relevant and is over droppable element
 - `data-dnd-top` / `data-dnd-bottom`: Present during an accepted hover within the configured top/bottom zone.
 - `data-dnd-left` / `data-dnd-right`: Present during an accepted hover within the configured left/right zone.
+- `data-dnd-middle` / `data-dnd-center`: Present during an accepted hover in the corresponding interior band.
+- `data-dnd-before` / `data-dnd-after` / `data-dnd-swap`: Sortable operation during an accepted hover.
 
 Position attributes follow the [position thresholds](#position-thresholds) and are removed outside the corresponding zones or when the hover ends.
 
@@ -771,8 +793,16 @@ import { useState } from "react";
 import { useCreateSortable, useSortable } from "drag-droppable/react";
 
 function BabyRow({ sortable, baby, index }) {
-  const { ref, state } = useSortable(sortable, { type: "baby", data: baby, index });
-  return <div ref={ref} className={state.accepts ? "highlight" : ""}>{baby.name}</div>;
+  const { ref, state } = useSortable(sortable, {
+    type: "baby",
+    data: baby,
+    index,
+  });
+  return (
+    <div ref={ref} className={state.accepts ? "highlight" : ""}>
+      {baby.name}
+    </div>
+  );
 }
 
 export default function Nursery() {
@@ -853,7 +883,9 @@ Type parameters follow the same convention as the core and React APIs: local dat
 
 ```js
 const { ref: babyRef, state } = useDnD(() => ({
-  type: "baby", data: props.baby, onDrop: visitBaby,
+  type: "baby",
+  data: props.baby,
+  onDrop: visitBaby,
 }));
 ```
 
@@ -876,13 +908,20 @@ const babies = ref([
 ]);
 const sortable = useCreateSortable({
   dataToId: "_id",
-  onListChange: (list) => { babies.value = list; },
+  onListChange: (list) => {
+    babies.value = list;
+  },
 });
 </script>
 
 <template>
-  <BabyRow v-for="(baby, index) in babies" :key="baby._id"
-    :sortable="sortable" :baby="baby" :index="index" />
+  <BabyRow
+    v-for="(baby, index) in babies"
+    :key="baby._id"
+    :sortable="sortable"
+    :baby="baby"
+    :index="index"
+  />
 </template>
 ```
 
@@ -893,7 +932,9 @@ import { useSortable } from "drag-droppable/vue";
 
 const props = defineProps(["sortable", "baby", "index"]);
 const { ref: babyRef, state } = useSortable(props.sortable, () => ({
-  type: "baby", data: props.baby, index: props.index,
+  type: "baby",
+  data: props.baby,
+  index: props.index,
 }));
 </script>
 

@@ -1,4 +1,4 @@
-import { DND_STORE, DRAGDROPPABLE, DRAG_SOURCE } from "./constants.js";
+import { DND_STORE, DRAGDROPPABLE, DRAG_SOURCE, DROP_POSITION } from "./constants.js";
 import draggable from "./draggable.js";
 import droppable from "./droppable.js";
 import { cloneWhenObject, isFunc } from "./functions.js";
@@ -161,6 +161,7 @@ export default function dragDroppable(options) {
     dropStore.update({
       ...commonProps,
       [DRAG_SOURCE]: allowSelfDrop ? undefined : dragStore[DRAG_SOURCE],
+      [DROP_POSITION]: _options[DROP_POSITION],
       bottomTopThreshold,
       leftRightThreshold,
       onDrop /* Only called on received drops. */,

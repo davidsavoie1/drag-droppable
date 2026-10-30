@@ -118,3 +118,7 @@ React and Vue integration tests cover `useDnD`, `useCreateSortable`, and
 `useSortable`: keyed reordering, changing rules and callbacks, element replacement,
 external transfers, cleanup, disabled subscriptions, and server rendering.
 The TypeScript fixtures also validate both framework entry points.
+
+Position tests cover interior bands, sortable intentions, rejected hovers,
+prefix changes and cleanup. `middle` and `center` require the pointer to be
+inside the target; missing geometry leaves positional fields absent.

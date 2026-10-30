@@ -11,6 +11,7 @@ const reactListAction = reactList({ dataToId: "id", onListChange(next: Item[], c
 } });
 const r = reactItem(reactListAction, { data: value, index: 0, type: "item", onChange(state) {
   const wrapped: Item | undefined = state.drop?.data;
+  const before: boolean | undefined = state.before;
 } });
 const wrapper: Item | undefined = r.state.drop?.data;
 // @ts-expect-error sortable item index is required
@@ -30,6 +31,7 @@ const vueAction = vueList(() => ({ dataToId: "id", onListChange(next: Item[], co
 const index = ref(0);
 const v = vueItem(vueAction, () => ({ data: value, index: index.value }));
 const vueWrapper: Item | undefined = v.state.value.drop?.data;
+const vueSwap: boolean | undefined = v.state.value.swap;
 // @ts-expect-error sortable item index is required
 vueItem(vueAction, () => ({ data: value }));
 const vueIdentity = vueList<string>({ noReorder: true });

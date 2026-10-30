@@ -386,6 +386,8 @@ test("React sortable keeps its list through Strict Mode, reorder, option updates
   send(row("A"), "dragstart");
   send(row("B"), "dragover", { clientY: 75 });
   assert.equal(itemStates.get("B").accepts, true);
+  assert.equal(itemStates.get("B").after, true);
+  assert.equal(row("B").hasAttribute("data-dnd-after"), true);
   const stationaryRenders = renders;
   send(row("B"), "dragover", { clientY: 75 });
   assert.equal(renders, stationaryRenders, "unchanged hover must not render again");

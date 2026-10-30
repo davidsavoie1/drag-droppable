@@ -53,7 +53,7 @@
     allowExternal: true,
     dataToId: "_id",
     horizontal,
-    noReorder: true,
+    noReorder: false,
     onListChange: (
       /** @type {{ _id: string, name: string, list: string }[]} */ list,
       { drag: { _id: draggedId, list: draggedFromList }, external },
@@ -82,6 +82,7 @@
         class="baby"
         use:sortable={{
           attributesPrefix: "foo",
+          bottomTopThreshold: 0.25,
           type: "baby",
           data: { ...baby, list: which },
           index,
@@ -141,25 +142,25 @@
   }
 
   div.list:not(.horizontal)
-    div.baby:global([data-foo-accepts][data-foo-top])::before {
+    div.baby:global([data-foo-accepts][data-foo-before])::before {
     border-width: 3px 0 0 0;
     content: "Before";
   }
 
   div.list:not(.horizontal)
-    div.baby:global([data-foo-accepts][data-foo-bottom])::before {
+    div.baby:global([data-foo-accepts][data-foo-after])::before {
     border-width: 0 0 3px 0;
     content: "After";
   }
 
   div.horizontal.list
-    div.baby:global([data-foo-accepts][data-foo-left])::before {
+    div.baby:global([data-foo-accepts][data-foo-before])::before {
     border-width: 0 0 0 3px;
     content: "Before";
   }
 
   div.horizontal.list
-    div.baby:global([data-foo-accepts][data-foo-right])::before {
+    div.baby:global([data-foo-accepts][data-foo-after])::before {
     border-width: 0 3px 0 0;
     content: "After";
   }

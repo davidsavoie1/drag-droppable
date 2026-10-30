@@ -56,6 +56,10 @@ export interface DropPosition {
   /** Within the configured top edge zone. Both vertical flags may be false. */
   top: boolean;
   bottom: boolean;
+  /** Inside the target, outside its top and bottom zones. */
+  middle: boolean;
+  /** Inside the target, outside its left and right zones. */
+  center: boolean;
 }
 
 /** Position fields are absent when no usable target rectangle is available. */
@@ -275,8 +279,18 @@ export type SortableDataToId<Data, Id> =
   | ((data: Data) => Id)
   | (unknown extends Data ? string | number : Extract<keyof Data, string | number>);
 
+/** Sortable operations for the current position, before acceptance is decided. */
+export interface SortablePosition {
+  before: boolean;
+  after: boolean;
+  swap: boolean;
+}
+
+export type SortableDropEvent<Dragged = unknown, Drop = unknown> =
+  DropEvent<Dragged, Drop> & Partial<SortablePosition>;
+
 /** Context of a proposed list change; drag and drop contain original data. */
-export type SortableListChange<Data = unknown, Id = unknown> = DropEvent<Data, Data> & {
+export type SortableListChange<Data = unknown, Id = unknown> = SortableDropEvent<Data, Data> & {
   /** Index captured at drag start; undefined for a source outside sortable. */
   dragIndex: number | undefined;
   /** True when the drag comes from outside this sortable instance. */
@@ -311,19 +325,21 @@ export interface SortableOptions<Data = unknown, Id = unknown> {
  */
 export type SortableItemOptions<Data = unknown, Id = unknown> = Omit<
   DnDOptions<SortableItem<Data, Id>, Data | SortableItem<Data, Id>>,
-  "el" | "data" | "onDrop" | "unless"
+  "el" | "data" | "onDrop" | "unless" | "when" | "onChange"
 > & {
   data: Data;
   index: number;
   /** Runs before the proposed list change. Shared callback only. */
-  onDrop?: DropCallback<Data, Data>;
-  unless?: ByType<DropPredicate<Data, Data>>;
+  onDrop?: (event: SortableDropEvent<Data, Data>) => void;
+  unless?: ByType<(event: SortableDropEvent<Data, Data>) => boolean>;
+  when?: ByType<(event: SortableDropEvent<Data | SortableItem<Data, Id>, SortableItem<Data, Id>>) => boolean>;
+  onChange?: (state: SortableItemState<Data, Id>) => void;
 };
 
 /** Combined state exposed by framework adapters for one sortable item. */
 export type SortableItemState<Data = unknown, Id = unknown> = DragDroppableState<
   SortableItem<Data, Id>, Data | SortableItem<Data, Id>
->;
+> & Partial<SortablePosition>;
 
 /** Managed by a framework adapter; configure it through the hook/composable. */
 export interface SortableItemController<Data = unknown, Id = unknown> {

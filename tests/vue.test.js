@@ -384,6 +384,8 @@ test("Vue sortable follows reactive list options, indices and element replacemen
   await send(row("A"), "dragstart");
   await send(row("B"), "dragover", { clientY: 75 });
   assert.equal(states.get("B").value.accepts, true);
+  assert.equal(states.get("B").value.after, true);
+  assert.equal(row("B").hasAttribute("data-dnd-after"), true);
   await send(row("B"), "drop", { clientY: 75 });
   await send(row("A"), "dragend");
   assert.deepEqual(changes.at(-1), ["initial", ["B", "A", "C"]]);

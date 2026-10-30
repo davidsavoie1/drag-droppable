@@ -1,4 +1,4 @@
-import { SORTABLE, SORTABLE_CONFIG } from "./constants.js";
+import { SORTABLE, SORTABLE_CONFIG, DROP_POSITION } from "./constants.js";
 import { dnd } from "./dnd.js";
 import { arrayEqual, identity, isFunc, isObject } from "./functions.js";
 
@@ -75,6 +75,7 @@ export default function createSortable({
         data: nextState,
         onDrop,
         unless,
+        [DROP_POSITION]: getIntent,
       };
 
       if (controller) {
@@ -105,14 +106,12 @@ export default function createSortable({
       detach();
     }
 
-    function extractBeforeAfter({ bottom, left, right, top }) {
-      const after = horizontal ? right : bottom;
-      const before = horizontal ? left : top;
-
+    function getIntent({ bottom, left, right, top, middle, center }) {
+      if (middle === undefined || center === undefined) return {};
       return {
-        after,
-        before,
-        middle: !after && !before,
+        after: horizontal ? right : bottom,
+        before: horizontal ? left : top,
+        swap: horizontal ? center : middle,
       };
     }
 
@@ -135,8 +134,7 @@ export default function createSortable({
         }
       }
 
-      const { drag, drop } = unlessArgs;
-      const { after, before, middle } = extractBeforeAfter(unlessArgs);
+      const { after, before, drag, drop, swap } = unlessArgs;
 
       const externalDrag = !isInternal(drag);
 
@@ -147,11 +145,11 @@ export default function createSortable({
       if (!externalDrag && noReorder) return true;
 
       /* Invalid swap for external drag */
-      if (middle && externalDrag) return true;
+      if (swap && externalDrag) return true;
 
       if (after && noAfter) return true;
       if (before && noBefore) return true;
-      if (middle && noSwap) return true;
+      if (swap && noSwap) return true;
 
       /* Consider index exceptions only for internal move */
       if (externalDrag || !isInternal(drop)) return false;
@@ -169,7 +167,7 @@ export default function createSortable({
 
     function onDrop(dropArgs) {
       const { drag, drop } = dropArgs;
-      const { after, middle } = extractBeforeAfter(dropArgs);
+      const { after, before, swap } = dropArgs;
 
       const _args = unwrapArgs(dropArgs);
 
@@ -204,7 +202,9 @@ export default function createSortable({
       /* If internal drag element not found, abort */
       if (internal && dragIndex < 0) return;
 
-      if (middle) {
+      if (!before && !after && !swap) return;
+
+      if (swap) {
         if (!internal) return;
 
         const dropIndex = nextIds.indexOf(dropId);

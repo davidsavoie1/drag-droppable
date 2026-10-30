@@ -1,5 +1,10 @@
 import { getConfig } from "./configure.js";
-import { DND_STORE, DROPPABLE, DRAG_SOURCE } from "./constants.js";
+import {
+  DND_STORE,
+  DROPPABLE,
+  DRAG_SOURCE,
+  DROP_POSITION,
+} from "./constants.js";
 import {
   registerDragCleanup,
   registerDragListeners,
@@ -245,12 +250,17 @@ export default function droppable(options) {
 
     const {
       accepts,
+      after,
       attributesPrefix = getConfig().attributesPrefix,
+      before,
       bottom,
+      center,
       concerned,
       dragging,
       left,
+      middle,
       right,
+      swap,
       top,
       type,
       unconcerned,
@@ -263,10 +273,15 @@ export default function droppable(options) {
     /* Position attributes are present only during an accepted hover. */
     Object.entries({
       accepts,
+      after: accepts && after,
+      before: accepts && before,
       bottom: accepts && bottom,
+      center: accepts && center,
       concerned,
       left: accepts && left,
+      middle: accepts && middle,
       right: accepts && right,
+      swap: accepts && swap,
       top: accepts && top,
       unconcerned,
     }).forEach(([k, v]) => {
@@ -373,8 +388,12 @@ export default function droppable(options) {
       }
 
       publish({
-        ...(preserveHover ? state : { accepts: false }),
-        ...(position ? { accepts: concerned, ...position } : {}),
+        ...(preserveHover && !position ? state : { accepts: false }),
+        ...(position
+          ? { accepts: concerned, ...position }
+          : preserveHover
+            ? options[DROP_POSITION]?.(state)
+            : {}),
         ...baseArgs,
         attributesPrefix,
         concerned,
@@ -392,14 +411,19 @@ export default function droppable(options) {
     function unsetDragoverEl() {
       dragoverEl = null;
       const {
-        x,
-        y,
+        after,
+        before,
+        bottom,
+        center,
         dx,
         dy,
         left,
+        middle,
         right,
+        swap,
         top,
-        bottom,
+        x,
+        y,
         ...stateWithoutPositionning
       } = state;
 
@@ -426,16 +450,30 @@ export default function droppable(options) {
       const dx = rect.width > 0 ? x / rect.width : 0;
       const dy = rect.height > 0 ? y / rect.height : 0;
 
-      return {
-        x,
-        y,
+      const left = isOnSide(dx, leftRightThreshold);
+      const right = isOnSide(dx, leftRightThreshold, true);
+      const top = isOnSide(dy, bottomTopThreshold);
+      const bottom = isOnSide(dy, bottomTopThreshold, true);
+      const inside =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        x >= 0 &&
+        x <= rect.width &&
+        y >= 0 &&
+        y <= rect.height;
+      const position = {
+        bottom,
+        center: inside && !left && !right,
         dx,
         dy,
-        left: isOnSide(dx, leftRightThreshold),
-        right: isOnSide(dx, leftRightThreshold, true),
-        top: isOnSide(dy, bottomTopThreshold),
-        bottom: isOnSide(dy, bottomTopThreshold, true),
+        left,
+        middle: inside && !top && !bottom,
+        right,
+        top,
+        x,
+        y,
       };
+      return { ...position, ..._options[DROP_POSITION]?.(position) };
     }
 
     function dragover(e) {
