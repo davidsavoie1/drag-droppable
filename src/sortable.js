@@ -4,12 +4,12 @@ import { arrayEqual, identity, isFunc, isObject } from "./functions.js";
 
 export default function createSortable({
   allowExternal = false,
+  allowReorder = true,
+  allowSwap = false,
   dataToId = identity,
   horizontal = false,
   noAfter = false,
   noBefore = false,
-  noReorder = false,
-  noSwap = false,
   onListChange = undefined,
 } = {}) {
   const itemsById = new Map();
@@ -70,8 +70,18 @@ export default function createSortable({
       _options = options;
       itemsById.set(id, item);
 
+      const threshold = horizontal
+        ? "leftRightThreshold"
+        : "bottomTopThreshold";
+
+      const thresholdArgs =
+        !allowReorder && allowSwap && rest[threshold] === undefined
+          ? { [threshold]: 0 }
+          : {};
+
       const controllerArgs = {
         ...rest,
+        ...thresholdArgs,
         data: nextState,
         onDrop,
         unless,
@@ -142,14 +152,14 @@ export default function createSortable({
       if (externalDrag && !allowExternal) return true;
 
       /* Invalid internal reorder */
-      if (!externalDrag && noReorder) return true;
+      if (!externalDrag && !allowReorder && (before || after)) return true;
 
       /* Invalid swap for external drag */
       if (swap && externalDrag) return true;
 
       if (after && noAfter) return true;
       if (before && noBefore) return true;
-      if (swap && noSwap) return true;
+      if (swap && !allowSwap) return true;
 
       /* Consider index exceptions only for internal move */
       if (externalDrag || !isInternal(drop)) return false;
@@ -262,28 +272,28 @@ export default function createSortable({
     value(options = {}) {
       const previous = [
         allowExternal,
+        allowReorder,
+        allowSwap,
         horizontal,
         noAfter,
         noBefore,
-        noReorder,
-        noSwap,
       ];
       ({
         allowExternal = false,
+        allowReorder = true,
+        allowSwap = false,
         horizontal = false,
         noAfter = false,
         noBefore = false,
-        noReorder = false,
-        noSwap = false,
         onListChange = undefined,
       } = options || {});
       const next = [
         allowExternal,
+        allowReorder,
+        allowSwap,
         horizontal,
         noAfter,
         noBefore,
-        noReorder,
-        noSwap,
       ];
       if (!arrayEqual(previous, next)) {
         [...itemsById.values()].forEach((item) => item.refresh());

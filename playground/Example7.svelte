@@ -10,7 +10,7 @@
   const sortable = createSortable({
     horizontal,
     noAfter: true,
-    noSwap: true,
+    allowSwap: false,
     onListChange: (/** @type {string[]} */ list) => (babies = [...list]),
   });
 </script>

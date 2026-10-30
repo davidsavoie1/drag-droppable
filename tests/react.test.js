@@ -371,9 +371,9 @@ test("React sortable keeps its list through Strict Mode, reorder, option updates
     itemStates.set(value, item.state);
     return h(alternate ? "article" : "div", { ref: item.ref, "data-row": value }, value);
   }
-  function App({ noReorder = false, alternate = false, label = "initial" }) {
+  function App({ allowReorder = true, alternate = false, label = "initial" }) {
     const [items, setItems] = useState(["A", "B", "C"]);
-    const sortable = useCreateSortable({ dataToId: "id", noReorder,
+    const sortable = useCreateSortable({ dataToId: "id", allowReorder,
       onListChange(next, context) { callbacks.push([label, context.ids]); setItems(next.map((value) => value.id)); },
     });
     listAction = sortable;
@@ -395,13 +395,13 @@ test("React sortable keeps its list through Strict Mode, reorder, option updates
   send(row("A"), "dragend");
   assert.deepEqual(callbacks.at(-1), ["initial", ["B", "A", "C"]]);
   assert.deepEqual([...mounted.container.querySelectorAll("[data-row]")].map((el) => el.textContent), ["B", "A", "C"]);
-  mounted.render({ noReorder: true, label: "blocked" });
+  mounted.render({ allowReorder: false, label: "blocked" });
   assert.equal(listAction, firstAction);
   send(row("A"), "dragstart");
   send(row("C"), "dragover");
   assert.equal(itemStates.get("C").accepts, false);
   // Changing list rules while hovering re-evaluates the registered target.
-  mounted.render({ noReorder: false, label: "updated" });
+  mounted.render({ allowReorder: true, label: "updated" });
   send(row("C"), "dragover", { clientY: 75 });
   send(row("C"), "drop", { clientY: 75 });
   send(row("A"), "dragend");
@@ -426,7 +426,7 @@ test("React sortables transfer across shared lists and clean up a removed source
   function App() {
     const [left, setLeft] = useState([{ id: "X" }]);
     const [right, setRight] = useState([{ id: "A" }, { id: "B" }]);
-    const source = useCreateSortable({ dataToId: "id", noReorder: true, onListChange: setLeft });
+    const source = useCreateSortable({ dataToId: "id", allowReorder: false, onListChange: setLeft });
     const target = useCreateSortable({ dataToId: "id", allowExternal: true,
       onListChange(next, details) {
         context = details;

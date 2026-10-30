@@ -34,5 +34,5 @@ const vueWrapper: Item | undefined = v.state.value.drop?.data;
 const vueSwap: boolean | undefined = v.state.value.swap;
 // @ts-expect-error sortable item index is required
 vueItem(vueAction, () => ({ data: value }));
-const vueIdentity = vueList<string>({ noReorder: true });
+const vueIdentity = vueList<string>({ allowReorder: false });
 vueItem(vueIdentity, { data: "A", index: 0 });

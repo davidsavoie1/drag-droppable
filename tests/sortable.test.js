@@ -151,7 +151,7 @@ for (const horizontal of [false, true]) {
   const options = { bottomTopThreshold: 0.2, leftRightThreshold: 0.2 };
 
   test(`sortable ${horizontal ? "horizontal" : "vertical"}: insertion on both edges and swap in center`, (t) => {
-    const l = list(t, data(), options, { horizontal });
+    const l = list(t, data(), options, { horizontal, allowSwap: true });
     for (const [source, target, position, expected] of [
       ["A", "C", 90, ["B", "C", "A", "D"]],
       ["A", "B", 10, ["A", "B", "C", "D"]],
@@ -167,7 +167,7 @@ for (const horizontal of [false, true]) {
   });
 
   test(`sortable ${horizontal ? "horizontal" : "vertical"}: neighbor edges are refused but center swap remains allowed`, (t) => {
-    const l = list(t, data(), options, { horizontal });
+    const l = list(t, data(), options, { horizontal, allowSwap: true });
     const source = l.rows.get("A").element;
     const target = l.rows.get("B").element;
     send(source, "dragstart");
@@ -236,7 +236,7 @@ test("sortable ignores predicates for other types", (t) => {
 });
 
 test("sortable aborts center swap if onDrop removes the source", (t) => {
-  const l = list(t, data(), { bottomTopThreshold: 0.2 });
+  const l = list(t, data(), { bottomTopThreshold: 0.2 }, { allowSwap: true });
   const target = l.rows.get("B");
   let drops = 0;
   target.binding.update({
@@ -255,11 +255,11 @@ test("sortable aborts center swap if onDrop removes the source", (t) => {
 
 
 for (const horizontal of [false, true]) {
-  for (const [flag, blocked] of [["noBefore", 10], ["noAfter", 90], ["noSwap", 50]]) {
+  for (const [flag, blocked] of [["noBefore", 10], ["noAfter", 90], ["allowSwap", 50]]) {
     test(`sortable ${horizontal ? "horizontal" : "vertical"}: ${flag} refuses only its zone`, (t) => {
       const l = list(t, data(), {
         bottomTopThreshold: 0.2, leftRightThreshold: 0.2,
-      }, { horizontal, [flag]: true });
+      }, { horizontal, allowSwap: true, [flag]: flag !== "allowSwap" });
       const source = l.rows.get("A").element;
       const target = l.rows.get("C").element;
       const coordinates = (position) => horizontal
@@ -363,9 +363,9 @@ test("allowExternal does not bypass position restrictions", (t) => {
 
 
 for (const horizontal of [false, true]) {
-  test(`noReorder refuses internal insertions and swaps (${horizontal ? "horizontal" : "vertical"})`, (t) => {
+  test(`allowReorder refuses internal insertions and swaps (${horizontal ? "horizontal" : "vertical"})`, (t) => {
     const l = list(t, data(), { bottomTopThreshold: 0.2, leftRightThreshold: 0.2 },
-      { noReorder: true, allowExternal: true, horizontal });
+      { allowReorder: false, allowExternal: true, horizontal });
     const source = l.rows.get("A").element;
     const target = l.rows.get("C").element;
     send(source, "dragstart");
@@ -383,8 +383,8 @@ for (const horizontal of [false, true]) {
 }
 
 for (const fromSortable of [false, true]) {
-  test(`noReorder allows external insertions when enabled (source sortable: ${fromSortable})`, (t) => {
-    const target = list(t, data(), {}, { noReorder: true, allowExternal: true });
+  test(`allowReorder allows external insertions when enabled (source sortable: ${fromSortable})`, (t) => {
+    const target = list(t, data(), {}, { allowReorder: false, allowExternal: true });
     const source = fromSortable ? list(t, [{ id: "X" }]).rows.get("X")
       : bind(t, draggable, { type: "item", data: { id: "X" } });
     drop(source.element, target.rows.get("B").element);
@@ -393,10 +393,40 @@ for (const fromSortable of [false, true]) {
   });
 }
 
-test("noReorder does not prevent dragging to another list", (t) => {
-  const source = list(t, [{ id: "X" }], {}, { noReorder: true });
+test("allowReorder does not prevent dragging to another list", (t) => {
+  const source = list(t, [{ id: "X" }], {}, { allowReorder: false });
   const target = list(t, data(), {}, { allowExternal: true });
   drop(source.rows.get("X").element, target.rows.get("B").element);
   assert.deepEqual(target.changes[0][1].ids, ["A", "B", "X", "C", "D"]);
   assert.equal(source.changes.length, 0);
+});
+
+for (const horizontal of [false, true]) {
+  for (const explicit of [false, true]) {
+    test(`swap-only thresholds (horizontal: ${horizontal}, explicit: ${explicit})`, (t) => {
+      configureDnD({ bottomTopThreshold: 0.2, leftRightThreshold: 0.2 });
+      const options = explicit ? { bottomTopThreshold: 0.2, leftRightThreshold: 0.2 } : {};
+      const l = list(t, data(), options, { horizontal, allowReorder: false, allowSwap: true });
+      const source = l.rows.get("A").element;
+      const target = l.rows.get("C").element;
+      send(source, "dragstart");
+      flushFrames();
+      for (const position of [1, 50, 99]) {
+        const coords = horizontal ? { clientX: position, clientY: 50 }
+          : { clientX: 50, clientY: position };
+        send(target, "dragover", coords);
+        assert.equal(target.hasAttribute("data-dnd-accepts"), !explicit || position === 50);
+        send(target, "drop", coords);
+      }
+      send(source, "dragend");
+      assert.equal(l.changes.length, explicit ? 1 : 3);
+      assert.deepEqual(l.changes[0][1].ids, ["C", "B", "A", "D"]);
+    });
+  }
+}
+
+test("swaps are refused by default even with a center zone", (t) => {
+  const l = list(t, data(), { bottomTopThreshold: 0.2 });
+  drop(l.rows.get("A").element, l.rows.get("C").element, { clientY: 50 });
+  assert.equal(l.changes.length, 0);
 });

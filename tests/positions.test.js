@@ -62,7 +62,7 @@ test("neutral zones reach rejected states and predicates but not CSS attributes"
 
 function sortableList(t, settings = {}, options = {}) {
   const changes = [], states = [];
-  const sortable = createSortable({ ...settings, onListChange: (...args) => changes.push(args) });
+  const sortable = createSortable({ allowSwap: true, ...settings, onListChange: (...args) => changes.push(args) });
   const rows = ["A", "B", "C"].map((data, index) => {
     const element = new TestElement();
     const binding = sortable(element, { type: "item", data, index, bottomTopThreshold: 0.2,

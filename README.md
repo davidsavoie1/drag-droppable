@@ -366,15 +366,16 @@ Drag and drop is often used to sort vertical or horizontal lists. `createSortabl
 `createSortable` accepts these arguments:
 
 - `allowExternal`: Allow insertion from another list or an ordinary draggable. Default: `false`.
+- `allowReorder`: Allow reordering within this list. Default: `true`.
+- `allowSwap`: Allow a swap between elements of the same list when position is in `middle` (vertical) or `center` (horizontal) zone. Default: `false`.
 - `dataToId`: A way to extract a unique identifier from the element data. Either a function `(data) => id`, a string representing a prop on an object or an integer representing an array index. When not provided, data itself is used as identity.
 - `horizontal`: When true, list is considered horizontal; `left` and `right` properties are used to determine `before` and `after`, respectively. Otherwise, list is vertical and `top` and `bottom` are used instead.
-- `noAfter`|`noBefore`|`noSwap`: When true, prevent drops at these positions. Default: `false`.
-- `noReorder`: Prevent moves and swaps within this list. External insertions still follow `allowExternal`. Default: `false`.
+- `noAfter`|`noBefore`: When true, prevent drops at these positions. Default: `false`.
 - `onListChange(data, context)`: Receives the proposed list and drop context (`drag`, `drop`, position, `ids`, `external`, and `dragIndex`). Apply the change in your application; `external` identifies a source outside this list, and `dragIndex` is available when it comes from a sortable.
 
 Drops are prevented when position would not generate any change (ie dropping an element on the `before` position of the next element).
 
-When dropzone thresholds less than 0.5 are defined on `sortable` (`bottomTopThreshold` for vertical list, `leftRightThreshold` for horizontal), a middle zone is created. A drop on it will be treated as an element swap instead of an insertion.
+When dropzone thresholds less than 0.5 are defined on `sortable` (`bottomTopThreshold` for vertical list, `leftRightThreshold` for horizontal), a middle zone is created. A drop on it swaps elements when `allowSwap` is enabled; otherwise it is refused. With `allowReorder: false` and `allowSwap: true`, the active axis defaults to a zero threshold, allowing swaps across the whole target. An explicit local threshold overrides this default.
 
 ### Styling sortable interactions
 

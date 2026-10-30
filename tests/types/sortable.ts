@@ -16,8 +16,8 @@ const identity = createSortable<string>({
   allowExternal: true,
   noAfter: true,
   noBefore: false,
-  noReorder: true,
-  noSwap: true,
+  allowReorder: false,
+  allowSwap: true,
   onListChange(data, context) {
     const values: string[] = data;
     const dragged: string = context.drag;
@@ -93,7 +93,7 @@ const oldCallback: SortableOptions<string, string> = {
 };
 const invalidRestriction: SortableOptions = {
   // @ts-expect-error position restrictions are booleans
-  noSwap: "yes",
+  allowSwap: "yes",
 };
 
 const invalidExternal: SortableOptions = {
@@ -103,5 +103,5 @@ const invalidExternal: SortableOptions = {
 
 const invalidReorder: SortableOptions = {
   // @ts-expect-error reorder restriction is a boolean
-  noReorder: "yes",
+  allowReorder: "yes",
 };

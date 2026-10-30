@@ -53,7 +53,8 @@
     allowExternal: true,
     dataToId: "_id",
     horizontal,
-    noReorder: false,
+    allowReorder: false,
+    allowSwap: true,
     onListChange: (
       /** @type {{ _id: string, name: string, list: string }[]} */ list,
       { drag: { _id: draggedId, list: draggedFromList }, external },

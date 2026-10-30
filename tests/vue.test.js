@@ -358,7 +358,7 @@ test("Vue combined roles expose source dragging separately from target acceptanc
 
 test("Vue sortable follows reactive list options, indices and element replacement", async (t) => {
   const items = ref(["A", "B", "C"]);
-  const settings = reactive({ noReorder: false, alternate: false, label: "initial" });
+  const settings = reactive({ allowReorder: true, alternate: false, label: "initial" });
   const changes = [];
   const states = new Map();
   const Row = {
@@ -371,7 +371,7 @@ test("Vue sortable follows reactive list options, indices and element replacemen
     },
   };
   const { container } = await mount(t, () => {
-    const sortable = useCreateSortable(() => ({ dataToId: "id", noReorder: settings.noReorder,
+    const sortable = useCreateSortable(() => ({ dataToId: "id", allowReorder: settings.allowReorder,
       onListChange(next, context) {
         changes.push([settings.label, context.ids]);
         items.value = next.map((value) => value.id);
@@ -389,12 +389,12 @@ test("Vue sortable follows reactive list options, indices and element replacemen
   await send(row("B"), "drop", { clientY: 75 });
   await send(row("A"), "dragend");
   assert.deepEqual(changes.at(-1), ["initial", ["B", "A", "C"]]);
-  settings.noReorder = true;
+  settings.allowReorder = false;
   await nextTick();
   await send(row("A"), "dragstart");
   await send(row("C"), "dragover");
   assert.equal(states.get("C").value.accepts, false);
-  settings.noReorder = false;
+  settings.allowReorder = true;
   settings.label = "updated";
   await nextTick();
   await send(row("C"), "dragover", { clientY: 75 });

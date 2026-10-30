@@ -277,7 +277,9 @@ export interface SortableItem<Data = unknown, Id = unknown> {
 
 export type SortableDataToId<Data, Id> =
   | ((data: Data) => Id)
-  | (unknown extends Data ? string | number : Extract<keyof Data, string | number>);
+  | (unknown extends Data
+      ? string | number
+      : Extract<keyof Data, string | number>);
 
 /** Sortable operations for the current position, before acceptance is decided. */
 export interface SortablePosition {
@@ -286,11 +288,17 @@ export interface SortablePosition {
   swap: boolean;
 }
 
-export type SortableDropEvent<Dragged = unknown, Drop = unknown> =
-  DropEvent<Dragged, Drop> & Partial<SortablePosition>;
+export type SortableDropEvent<Dragged = unknown, Drop = unknown> = DropEvent<
+  Dragged,
+  Drop
+> &
+  Partial<SortablePosition>;
 
 /** Context of a proposed list change; drag and drop contain original data. */
-export type SortableListChange<Data = unknown, Id = unknown> = SortableDropEvent<Data, Data> & {
+export type SortableListChange<
+  Data = unknown,
+  Id = unknown,
+> = SortableDropEvent<Data, Data> & {
   /** Index captured at drag start; undefined for a source outside sortable. */
   dragIndex: number | undefined;
   /** True when the drag comes from outside this sortable instance. */
@@ -302,6 +310,10 @@ export type SortableListChange<Data = unknown, Id = unknown> = SortableDropEvent
 export interface SortableOptions<Data = unknown, Id = unknown> {
   /** Accept insertions from other sortables or ordinary drag sources. Default false. */
   allowExternal?: boolean;
+  /** Allow insertions within this list. External insertions and swaps are independent. Default true. */
+  allowReorder?: boolean;
+  /** Allow swapping in a target's center. Default false. */
+  allowSwap?: boolean;
   /** Stable unique identity: a function or a property name. Defaults to the data itself. */
   dataToId?: SortableDataToId<Data, Id>;
   /** Use left/right instead of top/bottom. Default false. */
@@ -310,10 +322,6 @@ export interface SortableOptions<Data = unknown, Id = unknown> {
   noAfter?: boolean;
   /** Refuse insertion before a target. Default false. */
   noBefore?: boolean;
-  /** Refuse all moves within this list, including swaps. Default false. */
-  noReorder?: boolean;
-  /** Refuse swapping in a target's center. Default false. */
-  noSwap?: boolean;
   /** Proposed data first, then drop context. Apply the change in your application. */
   onListChange?: (data: Data[], context: SortableListChange<Data, Id>) => void;
 }
@@ -332,14 +340,23 @@ export type SortableItemOptions<Data = unknown, Id = unknown> = Omit<
   /** Runs before the proposed list change. Shared callback only. */
   onDrop?: (event: SortableDropEvent<Data, Data>) => void;
   unless?: ByType<(event: SortableDropEvent<Data, Data>) => boolean>;
-  when?: ByType<(event: SortableDropEvent<Data | SortableItem<Data, Id>, SortableItem<Data, Id>>) => boolean>;
+  when?: ByType<
+    (
+      event: SortableDropEvent<
+        Data | SortableItem<Data, Id>,
+        SortableItem<Data, Id>
+      >,
+    ) => boolean
+  >;
   onChange?: (state: SortableItemState<Data, Id>) => void;
 };
 
 /** Combined state exposed by framework adapters for one sortable item. */
-export type SortableItemState<Data = unknown, Id = unknown> = DragDroppableState<
-  SortableItem<Data, Id>, Data | SortableItem<Data, Id>
-> & Partial<SortablePosition>;
+export type SortableItemState<
+  Data = unknown,
+  Id = unknown,
+> = DragDroppableState<SortableItem<Data, Id>, Data | SortableItem<Data, Id>> &
+  Partial<SortablePosition>;
 
 /** Managed by a framework adapter; configure it through the hook/composable. */
 export interface SortableItemController<Data = unknown, Id = unknown> {
@@ -366,7 +383,9 @@ export function createSortable<
   Key extends string | number,
   Data extends Record<Key, unknown> = Record<Key, unknown>,
 >(
-  options: Omit<SortableOptions<Data, Data[Key]>, "dataToId"> & { dataToId: Key },
+  options: Omit<SortableOptions<Data, Data[Key]>, "dataToId"> & {
+    dataToId: Key;
+  },
 ): SortableAction<Data, Data[Key]>;
 
 /** A function selector determines the id type. */
@@ -378,7 +397,9 @@ export function createSortable<Data, Id>(
 
 /** With no selector, data values are also their ids. */
 export function createSortable<Data = unknown>(
-  options?: Omit<SortableOptions<Data, Data>, "dataToId"> & { dataToId?: undefined },
+  options?: Omit<SortableOptions<Data, Data>, "dataToId"> & {
+    dataToId?: undefined;
+  },
 ): SortableAction<Data, Data>;
 
 export function createSortable<Data = unknown, Id = unknown>(
