@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 import { createSortable, configureDnD, draggable } from "../src/index.js";
+import { SORTABLE_CONFIG } from "../src/constants.js";
+import sortableController from "../src/frameworks/sortableController.js";
 import { TestElement, bind, send, flushFrames } from "./helpers/dom.js";
 
 beforeEach(() => configureDnD({ attributesPrefix: "dnd", touch: true }));
@@ -429,4 +431,65 @@ test("swaps are refused by default even with a center zone", (t) => {
   const l = list(t, data(), { bottomTopThreshold: 0.2 });
   drop(l.rows.get("A").element, l.rows.get("C").element, { clientY: 50 });
   assert.equal(l.changes.length, 0);
+});
+
+
+test("factory defaults apply to callbacks, with local replacement and fallback on update", (t) => {
+  const calls = [];
+  const options = {
+    type: "item", bottomTopThreshold: 0.2,
+    unless: ({ before }) => before,
+    onDrop: ({ drag, drop }) => calls.push([drag.id, drop.id]),
+  };
+  const l = list(t, data(), { type: undefined }, options);
+  // Explicit undefined replaces the factory type; restore it through local update.
+  for (const [id, row] of l.rows) row.binding.update({ data: { id }, index: "ABCD".indexOf(id) });
+  drop(l.rows.get("A").element, l.rows.get("C").element, { clientY: 10 });
+  assert.equal(l.changes.length, 0);
+  drop(l.rows.get("A").element, l.rows.get("C").element, { clientY: 90 });
+  assert.deepEqual(calls, [["A", "C"]]);
+  const row = l.rows.get("C");
+  row.binding.update({ data: { id: "C" }, index: 2, unless: undefined, onDrop: undefined });
+  drop(l.rows.get("A").element, row.element, { clientY: 10 });
+  assert.equal(l.changes.length, 2);
+  assert.equal(calls.length, 1);
+  row.binding.update({ data: { id: "C" }, index: 2 });
+  drop(l.rows.get("A").element, row.element, { clientY: 10 });
+  assert.equal(l.changes.length, 2);
+});
+
+test("framework list updates replace defaults and refresh existing items", (t) => {
+  configureDnD({ bottomTopThreshold: 0.5, leftRightThreshold: 0.5 });
+  const l = list(t, data());
+  const source = l.rows.get("A").element, target = l.rows.get("C").element;
+  send(source, "dragstart");
+  flushFrames();
+  send(target, "dragover", { clientY: 75 });
+  assert.equal(target.hasAttribute("data-dnd-accepts"), true);
+  l.sortable[SORTABLE_CONFIG]({ dataToId: "id", unless: () => true });
+  send(target, "dragover", { clientY: 75 });
+  assert.equal(target.hasAttribute("data-dnd-accepts"), false);
+  l.sortable[SORTABLE_CONFIG]({ dataToId: "id", attributesPrefix: "custom" });
+  send(target, "dragover", { clientY: 75 });
+  assert.equal(target.hasAttribute("data-custom-accepts"), true);
+  assert.equal(target.hasAttribute("data-dnd-accepts"), false);
+  send(source, "dragend");
+});
+
+test("framework controllers forward default onChange and let item callbacks override it", (t) => {
+  const defaults = [], local = [];
+  const sortable = createSortable({ type: "item", onChange: (state) => defaults.push(state) });
+  const controller = sortableController(sortable);
+  t.after(() => controller.destroy());
+  controller.update({ data: "A", index: 0 });
+  const element = new TestElement();
+  controller.bind(element);
+  assert.ok(defaults.length > 0);
+  controller.update({ data: "A", index: 0, onChange: (state) => local.push(state) });
+  const count = defaults.length;
+  send(element, "dragstart");
+  flushFrames();
+  send(element, "dragend");
+  assert.ok(local.length > 0);
+  assert.equal(defaults.length, count);
 });

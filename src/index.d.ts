@@ -307,7 +307,8 @@ export type SortableListChange<
   ids: Id[];
 };
 
-export interface SortableOptions<Data = unknown, Id = unknown> {
+export interface SortableOptions<Data = unknown, Id = unknown>
+  extends Partial<Omit<SortableItemOptions<Data, Id>, "data" | "index">> {
   /** Accept insertions from other sortables or ordinary drag sources. Default false. */
   allowExternal?: boolean;
   /** Allow insertions within this list. External insertions and swaps are independent. Default true. */

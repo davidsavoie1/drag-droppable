@@ -36,3 +36,6 @@ const vueSwap: boolean | undefined = v.state.value.swap;
 vueItem(vueAction, () => ({ data: value }));
 const vueIdentity = vueList<string>({ allowReorder: false });
 vueItem(vueIdentity, { data: "A", index: 0 });
+
+reactList<Item, string>({ dataToId: "id", type: "item", onDrop({ drag }) { const item: Item = drag; } });
+vueList<Item, string>(() => ({ dataToId: "id" as const, type: "item", unless: ({ drop }) => !drop.name }));

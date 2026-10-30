@@ -1,4 +1,4 @@
-import { SORTABLE, SORTABLE_CONFIG, DROP_POSITION } from "./constants.js";
+import { SORTABLE, SORTABLE_CONFIG, SORTABLE_DEFAULTS, DROP_POSITION } from "./constants.js";
 import { dnd } from "./dnd.js";
 import { arrayEqual, identity, isFunc, isObject } from "./functions.js";
 
@@ -11,6 +11,7 @@ export default function createSortable({
   noAfter = false,
   noBefore = false,
   onListChange = undefined,
+  ...defaultOptions
 } = {}) {
   const itemsById = new Map();
   const getId = interpretDataToId(dataToId);
@@ -19,6 +20,7 @@ export default function createSortable({
   function sortable(el, options) {
     let state = {};
     let _options = {};
+    let effectiveOptions = {};
     let controller;
     let destroyed = false;
     const item = {
@@ -42,7 +44,8 @@ export default function createSortable({
         throw new Error("Cannot update a destroyed sortable binding.");
       }
 
-      const { data: datum, index, ...rest } = options;
+      const mergedOptions = { ...defaultOptions, ...options };
+      const { data: datum, index, ...rest } = mergedOptions;
 
       if (!Number.isInteger(index) || index < 0) {
         throw new Error(
@@ -68,6 +71,7 @@ export default function createSortable({
       };
       state = nextState;
       _options = options;
+      effectiveOptions = mergedOptions;
       itemsById.set(id, item);
 
       const threshold = horizontal
@@ -130,7 +134,7 @@ export default function createSortable({
     }
 
     function unless(unlessArgs) {
-      const { unless: _unless } = _options;
+      const { unless: _unless } = effectiveOptions;
 
       /* External unless has precedence */
       if (_unless) {
@@ -182,8 +186,8 @@ export default function createSortable({
       const _args = unwrapArgs(dropArgs);
 
       /* Execute normal `onDrop` */
-      if (isFunc(_options.onDrop)) {
-        _options.onDrop(_args);
+      if (isFunc(effectiveOptions.onDrop)) {
+        effectiveOptions.onDrop(_args);
       }
 
       /* Nothing to do */
@@ -270,6 +274,8 @@ export default function createSortable({
    * callbacks can follow committed framework options without replacing items. */
   Object.defineProperty(sortable, SORTABLE_CONFIG, {
     value(options = {}) {
+      const previousDefaults = defaultOptions;
+      let _dataToId;
       const previous = [
         allowExternal,
         allowReorder,
@@ -286,6 +292,8 @@ export default function createSortable({
         noAfter = false,
         noBefore = false,
         onListChange = undefined,
+        dataToId: _dataToId,
+        ...defaultOptions
       } = options || {});
       const next = [
         allowExternal,
@@ -295,11 +303,17 @@ export default function createSortable({
         noAfter,
         noBefore,
       ];
-      if (!arrayEqual(previous, next)) {
+      if (
+        !arrayEqual(previous, next) ||
+        !arrayEqual(Object.keys(previousDefaults), Object.keys(defaultOptions)) ||
+        Object.keys(defaultOptions).some((key) => !Object.is(previousDefaults[key], defaultOptions[key]))
+      ) {
         [...itemsById.values()].forEach((item) => item.refresh());
       }
     },
   });
+
+  Object.defineProperty(sortable, SORTABLE_DEFAULTS, { get: () => defaultOptions });
 
   return sortable;
 

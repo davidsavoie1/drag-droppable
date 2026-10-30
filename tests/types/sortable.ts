@@ -88,8 +88,8 @@ createSortable({ dataToId: "id" });
 createSortable();
 
 const oldCallback: SortableOptions<string, string> = {
-  // @ts-expect-error list changes use onListChange, not the item onChange callback
-  onChange: () => {},
+  // @ts-expect-error the list callback is named onListChange
+  onReorder: () => {},
 };
 const invalidRestriction: SortableOptions = {
   // @ts-expect-error position restrictions are booleans
@@ -104,4 +104,14 @@ const invalidExternal: SortableOptions = {
 const invalidReorder: SortableOptions = {
   // @ts-expect-error reorder restriction is a boolean
   allowReorder: "yes",
+};
+
+createSortable<Baby, string>({ dataToId: "id", type: "baby", bottomTopThreshold: 0.2,
+  onDrop({ drag }) { const original: Baby = drag; },
+  unless: ({ drop }) => drop.hunger > 10,
+  onChange(state) { const item: Baby | undefined = state.drop?.data; },
+});
+const invalidDefault: SortableOptions = {
+  // @ts-expect-error item identity belongs on each element
+  index: 0,
 };

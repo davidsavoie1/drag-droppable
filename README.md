@@ -350,13 +350,14 @@ Drag and drop is often used to sort vertical or horizontal lists. `createSortabl
 
   const sortable = createSortable({
     dataToId: "_id",
+    type: "baby",
     onListChange: (list) => (babies = [...list]),
   });
 </script>
 
 <div class="list">
   {#each babies as baby, index (baby)}
-    <div class="baby" use:sortable={{ data: baby, index, type: "baby" }}>
+    <div class="baby" use:sortable={{ data: baby, index }}>
       {baby.name}
     </div>
   {/each}
@@ -372,6 +373,8 @@ Drag and drop is often used to sort vertical or horizontal lists. `createSortabl
 - `horizontal`: When true, list is considered horizontal; `left` and `right` properties are used to determine `before` and `after`, respectively. Otherwise, list is vertical and `top` and `bottom` are used instead.
 - `noAfter`|`noBefore`: When true, prevent drops at these positions. Default: `false`.
 - `onListChange(data, context)`: Receives the proposed list and drop context (`drag`, `drop`, position, `ids`, `external`, and `dragIndex`). Apply the change in your application; `external` identifies a source outside this list, and `dragIndex` is available when it comes from a sortable.
+
+Other item options (`type`, thresholds, callbacks, etc.) can be passed to `createSortable` as defaults. Each element can override them; updates replace its local options and fall back to these defaults. An explicit `undefined` overrides a factory default too. Pass `data` and `index` on each element.
 
 Drops are prevented when position would not generate any change (ie dropping an element on the `before` position of the next element).
 

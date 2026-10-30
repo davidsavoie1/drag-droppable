@@ -50,6 +50,9 @@
 
 {#snippet renderBabiesList(which)}
   {const sortable = createSortable({
+    attributesPrefix: "foo",
+    bottomTopThreshold: 0.25,
+    type: "baby",
     allowExternal: true,
     dataToId: "_id",
     horizontal,
@@ -82,9 +85,6 @@
       <div
         class="baby"
         use:sortable={{
-          attributesPrefix: "foo",
-          bottomTopThreshold: 0.25,
-          type: "baby",
           data: { ...baby, list: which },
           index,
         }}

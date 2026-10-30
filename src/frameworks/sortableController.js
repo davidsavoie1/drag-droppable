@@ -1,3 +1,4 @@
+import { SORTABLE_DEFAULTS } from "../constants.js";
 import { isElement, isFunc } from "../functions.js";
 
 /* Give framework adapters the same lifecycle/observation interface as controllers.
@@ -16,7 +17,10 @@ export default function sortableController(sortable) {
     const keys = new Set([...Object.keys(state), ...Object.keys(next)]);
     if ([...keys].every((key) => Object.is(state[key], next[key]))) return;
     state = next;
-    onChange?.(state);
+    const callback = options && Object.hasOwn(options, "onChange")
+      ? onChange
+      : sortable[SORTABLE_DEFAULTS]?.onChange;
+    if (isFunc(callback)) callback(state);
     subscribers.forEach((callback) => callback(state));
   }
 
@@ -64,7 +68,10 @@ export default function sortableController(sortable) {
       const previousOnChange = onChange;
       options = { ...next };
       const current = options;
-      onChange = isFunc(options.onChange) ? options.onChange : undefined;
+      const callback = Object.hasOwn(options, "onChange")
+        ? options.onChange
+        : sortable[SORTABLE_DEFAULTS]?.onChange;
+      onChange = isFunc(callback) ? callback : undefined;
       if (!previousOnChange) onChange?.(state);
       if (destroyed || options !== current) return;
       if (binding) binding.update({ ...options, onChange: publish });

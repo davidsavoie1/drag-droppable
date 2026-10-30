@@ -12,3 +12,6 @@ export const SORTABLE_CONFIG = Symbol("SORTABLE_CONFIG");
 
 /* Private position enrichment for sortable targets. */
 export const DROP_POSITION = Symbol("DROP_POSITION");
+
+/* Private defaults lookup for framework callback forwarding. */
+export const SORTABLE_DEFAULTS = Symbol("SORTABLE_DEFAULTS");
