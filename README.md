@@ -22,6 +22,7 @@ The core has no dependencies, only a few kB of modern Javascript. Optional React
 - [Drag: `dndDrag`](#drag-dnddrag)
 - [Drop: `dndDrop`](#drop-dnddrop)
 - [Drag and drop: `dnd`](#drag-and-drop-dnd)
+- [Sorting: `createSortable`](#sorting-createsortable)
 - [Observing changes](#observing-changes)
 - [Dynamic configuration](#dynamic-configuration)
 - [Global configuration](#global-configuration)
@@ -328,6 +329,88 @@ The flat configuration combines draggable and droppable options. `data`, `namesp
 `dnd` returns `update()` and `destroy()`, like `dndDrag` and `dndDrop`. `disabled` disables both roles. Its `onChange` callback reports both roles together: `dragging` describes this element being dragged, while `accepts` and position describe a drag over this element.
 
 For different data or namespaces for each role, or a source-side `onDrop`, use `dndDrag` and `dndDrop` separately.
+
+## Sorting: `createSortable`
+
+Drag and drop is often used to sort vertical or horizontal lists. `createSortable` is a factory that creates a `sortable` controller that can be used just as `dnd`, but that greatly **simplifies list reordering**.
+
+**`sortable` must be provided with the `index`** of the element in the list.
+
+```svelte
+<script>
+  import { createSortable } from "drag-droppable";
+
+  let babies = $state([
+    { _id: "baby1", name: "Mia" },
+    { _id: "baby2", name: "Leo" },
+    { _id: "baby3", name: "Zoe" },
+  ]);
+
+  const sortable = createSortable({
+    dataToId: "_id",
+    onListChange: (list) => (babies = [...list]),
+  });
+</script>
+
+<div class="list">
+  {#each babies as baby, index (baby)}
+    <div class="baby" use:sortable={{ data: baby, index, type: "baby" }}>
+      {baby.name}
+    </div>
+  {/each}
+</div>
+```
+
+`createSortable` accepts these arguments:
+
+- `allowExternal`: Allow insertion from another list or an ordinary draggable. Default: `false`.
+- `dataToId`: A way to extract a unique identifier from the element data. Either a function `(data) => id`, a string representing a prop on an object or an integer representing an array index. When not provided, data itself is used as identity.
+- `horizontal`: When true, list is considered horizontal; `left` and `right` properties are used to determine `before` and `after`, respectively. Otherwise, list is vertical and `top` and `bottom` are used instead.
+- `noAfter`|`noBefore`|`noSwap`: When true, prevent drops at these positions. Default: `false`.
+- `noReorder`: Prevent moves and swaps within this list. External insertions still follow `allowExternal`. Default: `false`.
+- `onListChange(data, context)`: Receives the proposed list and drop context (`drag`, `drop`, position, `ids`, `external`, and `dragIndex`). Apply the change in your application; `external` identifies a source outside this list, and `dragIndex` is available when it comes from a sortable.
+
+Drops are prevented when position would not generate any change (ie dropping an element on the `before` position of the next element).
+
+When dropzone thresholds less than 0.5 are defined on `sortable` (`bottomTopThreshold` for vertical list, `leftRightThreshold` for horizontal), a middle zone is created. A drop on it will be treated as an element swap instead of an insertion.
+
+### Adding external elements
+
+A `sortable` element configured with `allowExternal` can accept drag elements that are external to its own list, even elements that are not themselves `sortable` (ie a compatible draggable element).
+
+This example moves a baby from a waiting list into a sortable list. Drop before or after an existing baby.
+
+```svelte
+<script>
+  import { createSortable, dndDrag } from "drag-droppable";
+
+  let waiting = $state([{ _id: "leo", name: "Leo" }]);
+  let babies = $state([{ _id: "mia", name: "Mia" }]);
+
+  const sortable = createSortable({
+    dataToId: "_id",
+    allowExternal: true,
+    onListChange(list, { drag, external }) {
+      babies = [...list];
+      if (external) {
+        waiting = waiting.filter((baby) => baby._id !== drag._id);
+      }
+    },
+  });
+</script>
+
+<h3>Waiting</h3>
+{#each waiting as baby (baby._id)}
+  <div use:dndDrag={{ type: "baby", data: baby }}>{baby.name}</div>
+{/each}
+
+<h3>Nursery</h3>
+{#each babies as baby, index (baby._id)}
+  <div use:sortable={{ type: "baby", data: baby, index }}>{baby.name}</div>
+{/each}
+```
+
+To copy instead of move, keep the source item in `waiting` by removing the `if (external)` block. Ids must remain unique within the destination list.
 
 ## Observing changes
 

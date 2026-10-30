@@ -263,3 +263,93 @@ export function dndDrop<Drop = unknown, Dragged = unknown>(
   element: HTMLElement,
   controller: DroppableController<Drop, Dragged>,
 ): DnDBinding<DroppableController<Drop, Dragged>>;
+
+/** Data carried internally by a sortable item's drag controller. */
+export interface SortableItem<Data = unknown, Id = unknown> {
+  data: Data;
+  id: Id;
+  index: number;
+}
+
+export type SortableDataToId<Data, Id> =
+  | ((data: Data) => Id)
+  | (unknown extends Data ? string | number : Extract<keyof Data, string | number>);
+
+/** Context of a proposed list change; drag and drop contain original data. */
+export type SortableListChange<Data = unknown, Id = unknown> = DropEvent<Data, Data> & {
+  /** Index captured at drag start; undefined for a source outside sortable. */
+  dragIndex: number | undefined;
+  /** True when the drag comes from outside this sortable instance. */
+  external: boolean;
+  /** Ids in the proposed list order. */
+  ids: Id[];
+};
+
+export interface SortableOptions<Data = unknown, Id = unknown> {
+  /** Accept insertions from other sortables or ordinary drag sources. Default false. */
+  allowExternal?: boolean;
+  /** Stable unique identity: a function or a property name. Defaults to the data itself. */
+  dataToId?: SortableDataToId<Data, Id>;
+  /** Use left/right instead of top/bottom. Default false. */
+  horizontal?: boolean;
+  /** Refuse insertion after a target. Default false. */
+  noAfter?: boolean;
+  /** Refuse insertion before a target. Default false. */
+  noBefore?: boolean;
+  /** Refuse all moves within this list, including swaps. Default false. */
+  noReorder?: boolean;
+  /** Refuse swapping in a target's center. Default false. */
+  noSwap?: boolean;
+  /** Proposed data first, then drop context. Apply the change in your application. */
+  onListChange?: (data: Data[], context: SortableListChange<Data, Id>) => void;
+}
+
+/**
+ * Options for one sortable element. Index follows the application's list order.
+ * onDrop and unless receive original data. Other DnD callbacks currently receive
+ * the internal SortableItem wrapper for items belonging to a sortable.
+ */
+export type SortableItemOptions<Data = unknown, Id = unknown> = Omit<
+  DnDOptions<SortableItem<Data, Id>, Data | SortableItem<Data, Id>>,
+  "el" | "data" | "onDrop" | "unless"
+> & {
+  data: Data;
+  index: number;
+  /** Runs before the proposed list change. Shared callback only. */
+  onDrop?: DropCallback<Data, Data>;
+  unless?: ByType<DropPredicate<Data, Data>>;
+};
+
+/** An action for one element; updates replace all item options. */
+export type SortableBinding<Data = unknown, Id = unknown> = DnDBinding<
+  SortableItemOptions<Data, Id>
+>;
+
+export type SortableAction<Data = unknown, Id = unknown> = (
+  element: HTMLElement,
+  options: SortableItemOptions<Data, Id>,
+) => SortableBinding<Data, Id>;
+
+/** Create a list action. A property selector uses that property's type for ids. */
+export function createSortable<
+  Key extends string | number,
+  Data extends Record<Key, unknown> = Record<Key, unknown>,
+>(
+  options: Omit<SortableOptions<Data, Data[Key]>, "dataToId"> & { dataToId: Key },
+): SortableAction<Data, Data[Key]>;
+
+/** A function selector determines the id type. */
+export function createSortable<Data, Id>(
+  options: Omit<SortableOptions<Data, Id>, "dataToId"> & {
+    dataToId: (data: Data) => Id;
+  },
+): SortableAction<Data, Id>;
+
+/** With no selector, data values are also their ids. */
+export function createSortable<Data = unknown>(
+  options?: Omit<SortableOptions<Data, Data>, "dataToId"> & { dataToId?: undefined },
+): SortableAction<Data, Data>;
+
+export function createSortable<Data = unknown, Id = unknown>(
+  options: SortableOptions<Data, Id>,
+): SortableAction<Data, Id>;

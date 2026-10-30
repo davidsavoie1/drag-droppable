@@ -1,6 +1,6 @@
 {
   "name": "drag-droppable",
-  "version": "0.1.2",
+  "version": "0.1.2+NEXT",
   "type": "module",
   "description": "Lightweight, data-driven, framework-independent drag-and-drop system with touch support and reactive stores.",
   "files": [

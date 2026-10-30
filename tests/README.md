@@ -104,3 +104,12 @@ and `unless`, recovery at drop, and the public `drag` field in snapshots.
 reentrant updates, reset on unbind/destroy, combined source/target state and
 options passed directly to actions. React and Vue tests also verify callback
 notifications with framework state subscriptions disabled.
+
+## Type declarations
+
+`tests/types/sortable.ts` checks inference, callbacks, Svelte action compatibility,
+and invalid configurations. Run it separately with TypeScript:
+
+```sh
+npm exec --yes --package=typescript -- tsc -p tests/types/tsconfig.json
+```

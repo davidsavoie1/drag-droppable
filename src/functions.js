@@ -10,6 +10,10 @@ const POINTER_PROPS = [
   "screenY",
 ];
 
+export function arrayEqual(arr1, arr2) {
+  return arr1.length === arr2.length && arr1.every((id, i) => id === arr2[i]);
+}
+
 /* Return the first nonzero bounding rect, checking descendants if needed. */
 export function getClientRect(el) {
   if (!el) return null;
@@ -23,6 +27,10 @@ export function getClientRect(el) {
   }
 
   return null;
+}
+
+export function identity(x) {
+  return x;
 }
 
 export function isDnDStore(arg) {
