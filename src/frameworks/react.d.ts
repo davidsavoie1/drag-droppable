@@ -15,7 +15,7 @@ import type {
   DroppableController,
   DroppableOptions,
   DroppableState,
-} from "./index.js";
+} from "../index.js";
 
 export interface DnDHookSettings {
   /** Observe state by default. False keeps the initial state and avoids subscriptions. */

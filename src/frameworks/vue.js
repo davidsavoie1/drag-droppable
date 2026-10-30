@@ -7,12 +7,12 @@ import {
   watch,
   watchEffect,
 } from "vue";
-import draggable from "./draggable.js";
-import droppable from "./droppable.js";
-import dragDroppable from "./dragDroppable.js";
-import createSortable from "./sortable.js";
+import draggable from "../draggable.js";
+import droppable from "../droppable.js";
+import dragDroppable from "../dragDroppable.js";
+import createSortable from "../sortable.js";
 import sortableController from "./sortableController.js";
-import { SORTABLE_CONFIG } from "./constants.js";
+import { SORTABLE_CONFIG } from "../constants.js";
 
 /** Attach a drag source. Use an options getter to track reactive configuration. */
 export function useDraggable(options = {}, settings = {}) {

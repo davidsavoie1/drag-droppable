@@ -14,12 +14,12 @@
       "default": "./src/index.js"
     },
     "./react": {
-      "types": "./src/react.d.ts",
-      "default": "./src/react.js"
+      "types": "./src/frameworks/react.d.ts",
+      "default": "./src/frameworks/react.js"
     },
     "./vue": {
-      "types": "./src/vue.d.ts",
-      "default": "./src/vue.js"
+      "types": "./src/frameworks/vue.d.ts",
+      "default": "./src/frameworks/vue.js"
     }
   },
   "keywords": [

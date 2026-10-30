@@ -4,6 +4,7 @@
 
 - Add `createSortable` as an additional list management controller.
 - Expand React and Vue integrations to `dnd` and `sortable`.
+- Move framework integrations code into sub-directory.
 
 ## [0.1.2] - 2026-10-27
 

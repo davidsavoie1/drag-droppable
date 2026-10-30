@@ -1,5 +1,5 @@
-import { useDnD as reactDnD, useCreateSortable as reactList, useSortable as reactItem } from "../../src/react.js";
-import { useDnD as vueDnD, useCreateSortable as vueList, useSortable as vueItem } from "../../src/vue.js";
+import { useDnD as reactDnD, useCreateSortable as reactList, useSortable as reactItem } from "drag-droppable/react";
+import { useDnD as vueDnD, useCreateSortable as vueList, useSortable as vueItem } from "drag-droppable/vue";
 import { ref } from "vue";
 
 type Item = { id: string; name: string };

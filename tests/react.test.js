@@ -28,7 +28,7 @@ dom.window.HTMLElement.prototype.getBoundingClientRect = () => ({
   height: 100,
 });
 const { createRoot } = await import("react-dom/client");
-const { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } = await import("../src/react.js");
+const { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } = await import("drag-droppable/react");
 const { configureDnD } = await import("../src/index.js");
 
 beforeEach(() => configureDnD({ attributesPrefix: "dnd", touch: true }));

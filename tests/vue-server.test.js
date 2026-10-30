@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createSSRApp, h } from "vue";
 import { renderToString } from "vue/server-renderer";
-import { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } from "../src/vue.js";
+import { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } from "drag-droppable/vue";
 
 test("Vue composables render idle state without DOM globals", async () => {
   assert.equal(typeof document, "undefined");

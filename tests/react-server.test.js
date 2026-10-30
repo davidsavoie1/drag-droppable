@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
-import { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } from "../src/react.js";
+import { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } from "drag-droppable/react";
 
 test("hooks render on the server without DOM globals", () => {
   assert.equal(typeof document, "undefined");

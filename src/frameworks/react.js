@@ -8,13 +8,13 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import draggable from "./draggable.js";
-import droppable from "./droppable.js";
-import dragDroppable from "./dragDroppable.js";
-import createSortable from "./sortable.js";
+import draggable from "../draggable.js";
+import droppable from "../droppable.js";
+import dragDroppable from "../dragDroppable.js";
+import createSortable from "../sortable.js";
 import sortableController from "./sortableController.js";
-import { SORTABLE_CONFIG } from "./constants.js";
-import { noop } from "./functions.js";
+import { SORTABLE_CONFIG } from "../constants.js";
+import { noop } from "../functions.js";
 
 const useCommitEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;

@@ -28,7 +28,7 @@ dom.window.HTMLElement.prototype.getBoundingClientRect = () => ({
 });
 const { createApp, h, reactive, ref, nextTick, isReadonly } =
   await import("vue");
-const { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } = await import("../src/vue.js");
+const { useDraggable, useDroppable, useDnD, useCreateSortable, useSortable } = await import("drag-droppable/vue");
 const { configureDnD } = await import("../src/index.js");
 
 beforeEach(() => configureDnD({ attributesPrefix: "dnd", touch: true }));

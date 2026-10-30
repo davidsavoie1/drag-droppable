@@ -1,4 +1,4 @@
-import { isElement, isFunc } from "./functions.js";
+import { isElement, isFunc } from "../functions.js";
 
 /* Give framework adapters the same lifecycle/observation interface as controllers.
  * Bindings are recreated only when their element detaches, never on option updates. */
